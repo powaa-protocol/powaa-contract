@@ -1,0 +1,5 @@
+[profile.default]
+src = 'contracts/eth'
+out = 'out'
+libs = ['lib']
+test = 'test/eth/foundry/unit'

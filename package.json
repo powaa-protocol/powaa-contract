@@ -5,10 +5,17 @@
     "name": "Powaa Protocol Development Team"
   },
   "scripts": {
-    "prepublishOnly": "yarn compile; yarn build:l1",
+    "prepublishOnly": "yarn compile; yarn build",
     "copy-dts-typechain": "npx copyfiles -u 1 \"typechain/**/*.d.ts\" compiled-typechain",
-    "compile": "rm -rf artifacts/ typechain/ compiled-typechain/; yarn hardhat typechain --config hardhat.config.ts"
+    "build:foundry-ffi": "tsc -p tsconfig.foundry-ffi.json",
+    "build": "tsc -p tsconfig.cjs.json; yarn copy-dts-typechain",
+    "remove:sol-log": "hardhat remove-logs",
+    "test": "yarn test:py; yarn test:hardhat; yarn test:foundry",
+    "test:hardhat": "hardhat test",
+    "test:foundry": "yarn test:foundry:unit; yarn test:foundry:integration;",
+    "compile": "rm -rf artifacts/ typechain/ compiled-typechain/ out/; yarn hardhat typechain --config hardhat.config.ts; forge build"
   },
+  "license": "BUSL-1.1",
   "devDependencies": {
     "@defi-wonderland/smock": "2.1.0",
     "@nomiclabs/hardhat-ethers": "2.0.6",

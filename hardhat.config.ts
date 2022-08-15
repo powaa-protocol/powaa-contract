@@ -7,8 +7,6 @@ import "hardhat-log-remover";
 import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";
 import "solidity-coverage";
-import "./scripts/account";
-import "./scripts/interact";
 
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 

@@ -1,0 +1,17 @@
+node_modules
+.env
+coverage
+coverage.json
+typechain
+compiled-typechain
+out/
+.vscode
+
+#Hardhat files
+cache
+artifacts
+__pycache__
+
+# IDEs
+.vscode/
+.idea/

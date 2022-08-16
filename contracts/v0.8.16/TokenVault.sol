@@ -2,27 +2,22 @@
 
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "./interfaces/ITokenVault.sol";
 
-contract TokenVault is
-  ITokenVault,
-  ReentrancyGuardUpgradeable,
-  PausableUpgradeable,
-  OwnableUpgradeable
-{
-  using SafeMathUpgradeable for uint256;
-  using SafeERC20Upgradeable for IERC20Upgradeable;
+contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
+  using SafeMath for uint256;
+  using SafeERC20 for IERC20;
 
   /* ========== STATE VARIABLES ========== */
   address public rewardsDistribution;
   address public rewardsToken;
-  IERC20Upgradeable public stakingToken;
+  IERC20 public stakingToken;
   uint256 public periodFinish = 0;
   uint256 public migrationFinish = 0;
   uint256 public rewardRate = 0;
@@ -53,19 +48,15 @@ contract TokenVault is
   error TokenVault_NotRewardsDistributionContract();
   error TokenVault_CannotStakeAfterMigration();
 
-  /* ========== INITIALIZER ========== */
-  function initialize(
+  /* ========== CONSTRUCTOR ========== */
+  constructor(
     address _rewardsDistribution,
     address _rewardsToken,
     address _stakingToken,
     uint256 _migrationFinishTime
-  ) external initializer {
-    ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
-    PausableUpgradeable.__Pausable_init();
-    OwnableUpgradeable.__Ownable_init();
-
+  ) {
     rewardsToken = _rewardsToken;
-    stakingToken = IERC20Upgradeable(_stakingToken);
+    stakingToken = IERC20(_stakingToken);
     rewardsDistribution = _rewardsDistribution;
 
     migrationFinish = _migrationFinishTime;
@@ -170,7 +161,7 @@ contract TokenVault is
     uint256 reward = rewards[msg.sender];
     if (reward > 0) {
       rewards[msg.sender] = 0;
-      IERC20Upgradeable(rewardsToken).safeTransfer(msg.sender, reward);
+      IERC20(rewardsToken).safeTransfer(msg.sender, reward);
       emit RewardPaid(msg.sender, reward);
     }
   }
@@ -199,7 +190,7 @@ contract TokenVault is
     // This keeps the reward rate in the right range, preventing overflows due to
     // very high values of rewardRate in the earned and rewardsPerToken functions;
     // Reward + leftover must be less than 2^256 / 10^18 to avoid overflow.
-    uint256 balance = IERC20Upgradeable(rewardsToken).balanceOf(address(this));
+    uint256 balance = IERC20(rewardsToken).balanceOf(address(this));
     if (rewardRate > balance.div(rewardsDuration))
       revert TokenVault_ProvidedRewardTooHigh();
 
@@ -216,7 +207,7 @@ contract TokenVault is
     if (tokenAddress == address(stakingToken))
       revert TokenVault_CannotWithdrawStakingToken();
 
-    IERC20Upgradeable(tokenAddress).safeTransfer(owner(), tokenAmount);
+    IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
 
     emit Recovered(tokenAddress, tokenAmount);
   }

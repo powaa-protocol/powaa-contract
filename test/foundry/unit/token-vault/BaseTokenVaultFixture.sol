@@ -38,20 +38,14 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     address _stakingToken,
     uint256 _migrationFinishTime
   ) internal returns (TokenVault) {
-    TokenVault _impl = new TokenVault();
-    TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-      address(_impl),
-      address(proxyAdmin),
-      abi.encodeWithSelector(
-        bytes4(keccak256("initialize(address,address,address,uint256)")),
-        _rewardsDistribution,
-        _rewardsToken,
-        _stakingToken,
-        _migrationFinishTime
-      )
+    TokenVault _impl = new TokenVault(
+      _rewardsDistribution,
+      _rewardsToken,
+      _stakingToken,
+      _migrationFinishTime
     );
 
-    return TokenVault(payable(_proxy));
+    return _impl;
   }
 
   function _scaffoldTokenVaultTestState()

@@ -57,7 +57,7 @@ contract TokenVault is
   function initialize(
     address _rewardsDistribution,
     address _rewardsToken,
-    address _stakingToken
+    address _stakingToken,
     uint256 _migrationFinishTime
   ) external initializer {
     ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
@@ -68,7 +68,7 @@ contract TokenVault is
     stakingToken = IERC20Upgradeable(_stakingToken);
     rewardsDistribution = _rewardsDistribution;
 
-    migrationFinish = _migrationFinishTime
+    migrationFinish = _migrationFinishTime;
   }
 
   /* ========== VIEWS ========== */

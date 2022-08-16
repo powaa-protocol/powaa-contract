@@ -17,6 +17,7 @@
   },
   "license": "BUSL-1.1",
   "devDependencies": {
+    "@chainlink/contracts": "0.4.2",
     "@defi-wonderland/smock": "2.1.0",
     "@nomiclabs/hardhat-ethers": "2.0.6",
     "@nomiclabs/hardhat-etherscan": "2.1.8",

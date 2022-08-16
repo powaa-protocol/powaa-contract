@@ -2,24 +2,22 @@
 
 pragma solidity 0.8.16;
 
-
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-// Inheritance
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "./interfaces/ITokenVault.sol";
-import "./RewardsDistributionRecipient.sol";
-import "./Pausable.sol";
 
-contract TokenVault is ITokenVault, RewardsDistributionRecipient, ReentrancyGuard, Pausable {
-    using SafeMath for uint256;
-    using SafeERC20 for IERC20;
+contract TokenVault is ITokenVault, ReentrancyGuardUpgradeable, PausableUpgradeable, OwnableUpgradeable {
+    using SafeMathUpgradeable for uint256;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /* ========== STATE VARIABLES ========== */
-
+    address public rewardsDistribution;
     address public rewardsToken;
-    IERC20 public stakingToken;
+    IERC20Upgradeable public stakingToken;
     uint256 public periodFinish = 0;
     uint256 public rewardRate = 0;
     uint256 public rewardsDuration = 7 days;
@@ -32,16 +30,34 @@ contract TokenVault is ITokenVault, RewardsDistributionRecipient, ReentrancyGuar
     uint256 private _totalSupply;
     mapping(address => uint256) private _balances;
 
-    /* ========== CONSTRUCTOR ========== */
+    /* ========== EVENTS ========== */
+    event RewardAdded(uint256 reward);
+    event Staked(address indexed user, uint256 amount);
+    event Withdrawn(address indexed user, uint256 amount);
+    event RewardPaid(address indexed user, uint256 reward);
+    event RewardsDurationUpdated(uint256 newDuration);
+    event Recovered(address token, uint256 amount);
 
-    constructor(
-        address _owner,
+    /* ========== ERRORS ========== */
+    error TokenVault_CannotStakeZeroAmount();
+    error TokenVault_CannotWithdrawZeroAmount();
+    error TokenVault_ProvidedRewardTooHigh();
+    error TokenVault_CannotWithdrawStakingToken();
+    error TokenVault_RewardPeriodMustBeCompleted();
+    error TokenVault_NotRewardsDistributionContract();
+
+    /* ========== INITIALIZER ========== */
+    function initialize(
         address _rewardsDistribution,
         address _rewardsToken,
-        address _stakingToken
-    ) public Owned(_owner) {
+        address _stakingToken)
+    external initializer {
+        ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+        PausableUpgradeable.__Pausable_init();
+        OwnableUpgradeable.__Ownable_init();
+
         rewardsToken = _rewardsToken;
-        stakingToken = IERC20(_stakingToken);
+        stakingToken = IERC20Upgradeable(_stakingToken);
         rewardsDistribution = _rewardsDistribution;
     }
 
@@ -78,21 +94,45 @@ contract TokenVault is ITokenVault, RewardsDistributionRecipient, ReentrancyGuar
         return rewardRate.mul(rewardsDuration);
     }
 
+    /* ========== ADMIN FUNCTIONS ========== */
+    function setPaused(bool _paused) external onlyOwner {
+        // Ensure we're actually changing the state before we do anything
+        if (_paused == paused()) {
+            return;
+        }
+
+        if (_paused) {
+            _pause();
+            return;
+        } 
+
+        _unpause();
+    }
+
+    function setRewardsDistribution(address _rewardsDistribution) external onlyOwner {
+        rewardsDistribution = _rewardsDistribution;
+    }
+
+
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function stake(uint256 amount) external nonReentrant notPaused updateReward(msg.sender) {
-        require(amount > 0, "Cannot stake 0");
+    function stake(uint256 amount) external nonReentrant whenNotPaused updateReward(msg.sender) {
+        if (amount <= 0) revert TokenVault_CannotStakeZeroAmount();
+
         _totalSupply = _totalSupply.add(amount);
         _balances[msg.sender] = _balances[msg.sender].add(amount);
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
+
         emit Staked(msg.sender, amount);
     }
 
     function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) {
-        require(amount > 0, "Cannot withdraw 0");
+        if(amount <= 0) revert TokenVault_CannotWithdrawZeroAmount();
+        
         _totalSupply = _totalSupply.sub(amount);
         _balances[msg.sender] = _balances[msg.sender].sub(amount);
         stakingToken.safeTransfer(msg.sender, amount);
+
         emit Withdrawn(msg.sender, amount);
     }
 
@@ -100,7 +140,7 @@ contract TokenVault is ITokenVault, RewardsDistributionRecipient, ReentrancyGuar
         uint256 reward = rewards[msg.sender];
         if (reward > 0) {
             rewards[msg.sender] = 0;
-            IERC20(rewardsToken).safeTransfer(msg.sender, reward);
+            IERC20Upgradeable(rewardsToken).safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
     }
@@ -112,7 +152,7 @@ contract TokenVault is ITokenVault, RewardsDistributionRecipient, ReentrancyGuar
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function notifyRewardAmount(uint256 reward) override external onlyRewardsDistribution updateReward(address(0)) {
+    function notifyRewardAmount(uint256 reward)  external onlyRewardsDistribution updateReward(address(0)) {
         if (block.timestamp >= periodFinish) {
             rewardRate = reward.div(rewardsDuration);
         } else {
@@ -125,8 +165,8 @@ contract TokenVault is ITokenVault, RewardsDistributionRecipient, ReentrancyGuar
         // This keeps the reward rate in the right range, preventing overflows due to
         // very high values of rewardRate in the earned and rewardsPerToken functions;
         // Reward + leftover must be less than 2^256 / 10^18 to avoid overflow.
-        uint balance = IERC20(rewardsToken).balanceOf(address(this));
-        require(rewardRate <= balance.div(rewardsDuration), "Provided reward too high");
+        uint balance = IERC20Upgradeable(rewardsToken).balanceOf(address(this));
+        if(rewardRate > balance.div(rewardsDuration)) revert TokenVault_ProvidedRewardTooHigh();
 
         lastUpdateTime = block.timestamp;
         periodFinish = block.timestamp.add(rewardsDuration);
@@ -135,17 +175,22 @@ contract TokenVault is ITokenVault, RewardsDistributionRecipient, ReentrancyGuar
 
     // Added to support recovering LP Rewards from other systems such as BAL to be distributed to holders
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
-        require(tokenAddress != address(stakingToken), "Cannot withdraw the staking token");
-        IERC20(tokenAddress).safeTransfer(owner, tokenAmount);
+        if (tokenAddress == address(stakingToken)) revert TokenVault_CannotWithdrawStakingToken();
+
+        IERC20Upgradeable(tokenAddress).safeTransfer(owner(), tokenAmount);
+
         emit Recovered(tokenAddress, tokenAmount);
     }
 
     function setRewardsDuration(uint256 _rewardsDuration) external onlyOwner {
-        require(
-            block.timestamp > periodFinish,
-            "Previous rewards period must be complete before changing the duration for the new period"
-        );
+        if(
+            block.timestamp <= periodFinish
+        ) {
+            revert TokenVault_RewardPeriodMustBeCompleted();
+        }
+
         rewardsDuration = _rewardsDuration;
+
         emit RewardsDurationUpdated(rewardsDuration);
     }
 
@@ -161,12 +206,8 @@ contract TokenVault is ITokenVault, RewardsDistributionRecipient, ReentrancyGuar
         _;
     }
 
-    /* ========== EVENTS ========== */
-
-    event RewardAdded(uint256 reward);
-    event Staked(address indexed user, uint256 amount);
-    event Withdrawn(address indexed user, uint256 amount);
-    event RewardPaid(address indexed user, uint256 reward);
-    event RewardsDurationUpdated(uint256 newDuration);
-    event Recovered(address token, uint256 amount);
+    modifier onlyRewardsDistribution() {
+        if(msg.sender != rewardsDistribution) revert TokenVault_NotRewardsDistributionContract();
+        _;
+    }
 }

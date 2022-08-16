@@ -4,3 +4,6 @@
 [submodule "lib/solmate"]
 	path = lib/solmate
 	url = https://github.com/Rari-Capital/solmate
+[submodule "lib/mock-contract"]
+	path = lib/mock-contract
+	url = https://github.com/gnosis/mock-contract

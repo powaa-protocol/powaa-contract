@@ -24,6 +24,7 @@ contract TokenVault is
   address public rewardsToken;
   IERC20Upgradeable public stakingToken;
   uint256 public periodFinish = 0;
+  uint256 public migrationFinish = 0;
   uint256 public rewardRate = 0;
   uint256 public rewardsDuration = 7 days;
   uint256 public lastUpdateTime;
@@ -50,12 +51,14 @@ contract TokenVault is
   error TokenVault_CannotWithdrawStakingToken();
   error TokenVault_RewardPeriodMustBeCompleted();
   error TokenVault_NotRewardsDistributionContract();
+  error TokenVault_CannotStakeAfterMigration();
 
   /* ========== INITIALIZER ========== */
   function initialize(
     address _rewardsDistribution,
     address _rewardsToken,
     address _stakingToken
+    uint256 _migrationFinishTime
   ) external initializer {
     ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
     PausableUpgradeable.__Pausable_init();
@@ -64,6 +67,8 @@ contract TokenVault is
     rewardsToken = _rewardsToken;
     stakingToken = IERC20Upgradeable(_stakingToken);
     rewardsDistribution = _rewardsDistribution;
+
+    migrationFinish = _migrationFinishTime
   }
 
   /* ========== VIEWS ========== */
@@ -136,6 +141,8 @@ contract TokenVault is
     whenNotPaused
     updateReward(msg.sender)
   {
+    if (block.timestamp > migrationFinish)
+      revert TokenVault_CannotStakeAfterMigration();
     if (amount <= 0) revert TokenVault_CannotStakeZeroAmount();
 
     _totalSupply = _totalSupply.add(amount);

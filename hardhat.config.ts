@@ -19,21 +19,7 @@ const chainIds = {
   ropsten: 3,
 };
 
-const goerliTestnetPrivateKey: string | undefined =
-  process.env.GOERLI_TESTNET_PRIVATE_KEY;
-if (!goerliTestnetPrivateKey) {
-  throw new Error("Please set your GOERLI_TESTNET_PRIVATE_KEY in a .env file");
-}
 
-const alchemyKey: string | undefined = process.env.ALCHEMY_KEY;
-if (!alchemyKey) {
-  throw new Error("Please set your ALCHEMY_KEY in a .env file");
-}
-
-const mainnetForkRPC: string | undefined = process.env.MAINNET_FORK_RPC_URL;
-if (!mainnetForkRPC) {
-  throw new Error("Please set your MAINNET_FORK_RPC_URL in a .env file");
-}
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -48,33 +34,8 @@ module.exports = {
       allowUnlimitedContractSize: true,
       timeout: 1800000,
       accounts: [
-        {
-          privateKey: process.env.LOCAL_PRIVATE_KEY_1,
-          balance: "10000000000000000000000",
-        },
-        {
-          privateKey: process.env.LOCAL_PRIVATE_KEY_2,
-          balance: "10000000000000000000000",
-        },
-        {
-          privateKey: process.env.LOCAL_PRIVATE_KEY_3,
-          balance: "10000000000000000000000",
-        },
-        {
-          privateKey: process.env.LOCAL_PRIVATE_KEY_4,
-          balance: "10000000000000000000000",
-        },
+        
       ],
-    },
-    goerli: {
-      accounts: [goerliTestnetPrivateKey as string],
-      chainId: chainIds["goerli"],
-      url: `https://eth-goerli.g.alchemy.com/v2/${alchemyKey}`,
-    },
-    mainnetfork: {
-      accounts: [goerliTestnetPrivateKey as string],
-      chainId: chainIds["mainnet"],
-      url: mainnetForkRPC,
     },
     devnet: {
       url: "http://localhost:5000",
@@ -117,7 +78,7 @@ module.exports = {
   },
   typechain: {
     outDir: "./typechain",
-    target: process.env.TYPECHAIN_TARGET || "ethers-v5",
+    target:  "ethers-v5",
   },
   mocha: {
     timeout: 800000,

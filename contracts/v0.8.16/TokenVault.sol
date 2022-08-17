@@ -13,12 +13,16 @@ import "../../lib/solmate/src/utils/FixedPointMathLib.sol";
 import "./interfaces/ITokenVault.sol";
 import "./interfaces/IMigrator.sol";
 import "./interfaces/IFeeModel.sol";
+import "./interfaces/ILp.sol";
 
 contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   using SafeTransferLib for address;
   using FixedPointMathLib for uint256;
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
+
+  /* ========== CONSTANT ========== */
+  address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
   /* ========== STATE VARIABLES ========== */
   address public rewardsDistribution;
@@ -31,20 +35,28 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   uint256 public lastUpdateTime;
   uint256 public rewardPerTokenStored;
 
-  /* ========== STATE VARIABLES: Migration Options ========== */
-  bool public isMigrated;
-  uint256 public campaignStartBlock;
-  uint256 public campaignEndBlock;
-  uint256 public migrateChainId;
-  IFeeModel public feeModel;
-  IMigrator public migrator;
-  address public controller;
-
   mapping(address => uint256) public userRewardPerTokenPaid;
   mapping(address => uint256) public rewards;
 
   uint256 private _totalSupply;
   mapping(address => uint256) private _balances;
+
+  /* ========== STATE VARIABLES: Migration Options ========== */
+  IFeeModel public withdrawalFeeModel;
+  bool public isGovLpVault;
+  bool public isMigrated;
+
+  uint256 public campaignStartBlock;
+  uint256 public campaignEndBlock;
+  uint256 public migrateChainId;
+  uint256 public govLPTokenVaultFeeRate;
+  uint256 public treasuryFeeRate;
+  uint256 public reserve;
+
+  address public treasury;
+  address public govLPTokenVault;
+  IMigrator public migrator;
+  address public controller;
 
   /* ========== EVENTS ========== */
   event RewardAdded(uint256 reward);
@@ -54,13 +66,20 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   event RewardsDurationUpdated(uint256 newDuration);
   event Recovered(address token, uint256 amount);
   event SetMigrationOption(
-    bool isMigrated,
+    IMigrator migrator,
+    address treasury,
     uint256 campaignEndBlock,
-    IFeeModel feeModel,
-    IMigrator migrator
+    uint256 govLPTokenVaultFeeRate,
+    uint256 treasuryFeeRate
   );
-  event Migrate(uint256 stakingTokenAmount, uint256 ethAmount);
+  event Migrate(
+    uint256 stakingTokenAmount,
+    uint256 vaultETHAmount,
+    uint256 govVaultETHFee,
+    uint256 treasuryETHFee
+  );
   event ClaimETH(address indexed user, uint256 ethAmount);
+  event SetGovLPTokenVault(address govLPTokenVault);
 
   /* ========== ERRORS ========== */
   error TokenVault_CannotStakeZeroAmount();
@@ -75,18 +94,40 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   error TokenVault_NotYetMigrated();
   error TokenVault_InvalidChainId();
   error TokenVault_NotController();
+  error TokenVault_OnlyNonGovLPTokenVault();
+  error TokenVault_LpTokenAddressInvalid();
 
   /* ========== CONSTRUCTOR ========== */
   constructor(
     address _rewardsDistribution,
     address _rewardsToken,
     address _stakingToken,
-    address _controller
+    address _controller,
+    address _govToken,
+    IFeeModel _withdrawalFeeModel,
+    bool _isGovLpVault
   ) {
     rewardsToken = _rewardsToken;
     stakingToken = IERC20(_stakingToken);
     rewardsDistribution = _rewardsDistribution;
     controller = _controller;
+    withdrawalFeeModel = _withdrawalFeeModel;
+    isGovLpVault = _isGovLpVault;
+
+    if (!isGovLpVault) return;
+
+    // if isGovLPVault is true, then need to do sanity check if stakingToken is GOV_TOKEN-WETH LP
+    if (_govToken > WETH) {
+      if (
+        address(ILp(_stakingToken).token0()) != address(WETH) ||
+        address(ILp(_stakingToken).token1()) != address(_govToken)
+      ) revert TokenVault_LpTokenAddressInvalid();
+    } else {
+      if (
+        address(ILp(_stakingToken).token0()) != address(_govToken) ||
+        address(ILp(_stakingToken).token1()) != address(WETH)
+      ) revert TokenVault_LpTokenAddressInvalid();
+    }
   }
 
   /* ========== MODIFIERS ========== */
@@ -191,18 +232,36 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     rewardsDistribution = _rewardsDistribution;
   }
 
-  function setMigrationOption(
-    bool _isMigrated,
-    uint256 _campaignEndBlock,
-    IFeeModel _feeModel,
-    IMigrator _migrator
-  ) external onlyOwner {
-    isMigrated = _isMigrated;
-    campaignEndBlock = _campaignEndBlock;
-    feeModel = _feeModel;
-    migrator = _migrator;
+  function setGovLPTokenVault(address _govLPTokenVault) external onlyOwner {
+    if (isGovLpVault) {
+      revert TokenVault_OnlyNonGovLPTokenVault();
+    }
 
-    emit SetMigrationOption(isMigrated, campaignEndBlock, feeModel, migrator);
+    govLPTokenVault = _govLPTokenVault;
+
+    emit SetGovLPTokenVault(_govLPTokenVault);
+  }
+
+  function setMigrationOption(
+    IMigrator _migrator,
+    address _treasury,
+    uint256 _campaignEndBlock,
+    uint256 _govLPTokenVaultFeeRate,
+    uint256 _treasuryFeeRate
+  ) external onlyOwner {
+    migrator = _migrator;
+    treasury = _treasury;
+    campaignEndBlock = _campaignEndBlock;
+    govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
+    treasuryFeeRate = _treasuryFeeRate;
+
+    emit SetMigrationOption(
+      _migrator,
+      _treasury,
+      _campaignEndBlock,
+      _govLPTokenVaultFeeRate,
+      _treasuryFeeRate
+    );
   }
 
   /* ========== MUTATIVE FUNCTIONS ========== */
@@ -217,19 +276,37 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     stakingToken.safeTransfer(address(migrator), _totalSupply);
     migrator.execute();
 
-    uint256 feeWad = feeModel.getFee(
-      campaignStartBlock,
-      block.number,
-      campaignEndBlock
-    );
-    uint256 fee = feeWad.mulWadDown(address(this).balance);
-    msg.sender.safeTransferETH(fee);
+    if (!isGovLpVault) {
+      uint256 govLPTokenVaultFee = govLPTokenVaultFeeRate.mulWadDown(
+        address(this).balance
+      );
+      uint256 treasuryFee = treasuryFeeRate.mulWadDown(address(this).balance);
 
-    emit Migrate(_totalSupply, fee);
+      treasury.safeTransferETH(treasuryFee);
+      govLPTokenVault.safeTransferETH(govLPTokenVaultFee);
+
+      emit Migrate(
+        _totalSupply,
+        address(this).balance,
+        treasuryFee,
+        govLPTokenVaultFee
+      );
+      return;
+    }
+
+    emit Migrate(_totalSupply, address(this).balance, 0, 0);
   }
 
   function claimETH() external whenMigrated {
-    uint256 claimable = _balances[msg.sender].divWadDown(_totalSupply);
+    uint256 claimable = _balances[msg.sender].mulDivDown(
+      address(this).balance,
+      _totalSupply
+    );
+
+    if (claimable == 0) {
+      return;
+    }
+
     msg.sender.safeTransferETH(claimable);
 
     emit ClaimETH(msg.sender, claimable);
@@ -259,9 +336,28 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   {
     if (_amount <= 0) revert TokenVault_CannotWithdrawZeroAmount();
 
+    // actual withdrawal amount calculation with fee calculation
+    uint256 actualWithdrawalAmount;
+    {
+      if (campaignStartBlock == 0) {
+        // if campaignStartBlock == 0, then no rewards notified yet, hence campaign hasn't started
+        actualWithdrawalAmount = _amount;
+      } else {
+        uint256 feeRate = withdrawalFeeModel.getFee(
+          campaignStartBlock,
+          block.number,
+          campaignEndBlock
+        );
+        uint256 withdrawalFee = feeRate.mulWadDown(_amount);
+        reserve += withdrawalFee;
+        actualWithdrawalAmount = _amount - withdrawalFee;
+      }
+    }
+
     _totalSupply = _totalSupply.sub(_amount);
     _balances[msg.sender] = _balances[msg.sender].sub(_amount);
-    stakingToken.safeTransfer(msg.sender, _amount);
+
+    stakingToken.safeTransfer(msg.sender, actualWithdrawalAmount);
 
     emit Withdrawn(msg.sender, _amount);
   }

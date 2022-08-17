@@ -13,12 +13,13 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     fixture = TokenVaultTestState({
       tokenVault: _fixture.tokenVault,
+      controller: _fixture.controller,
       rewardDistributor: _fixture.rewardDistributor,
       fakeFeeModel: _fixture.fakeFeeModel,
       fakeMigrator: _fixture.fakeMigrator,
       fakeRewardToken: _fixture.fakeRewardToken,
       fakeStakingToken: _fixture.fakeStakingToken,
-      controller: _fixture.controller
+      fakeGovToken: _fixture.fakeGovToken
     });
   }
 
@@ -52,11 +53,15 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     fixture.fakeStakingToken.mint(address(ALICE), STAKE_AMOUNT_1000);
 
     fixture.tokenVault.setMigrationOption(
-      true,
+      IMigrator(address(fixture.fakeMigrator)),
+      address(1111),
       block.timestamp,
-      IFeeModel(address(fixture.fakeFeeModel)),
-      IMigrator(address(fixture.fakeMigrator))
+      uint256(0),
+      uint256(0)
     );
+
+    vm.prank(fixture.controller);
+    fixture.tokenVault.migrate();
 
     vm.startPrank(ALICE);
 
@@ -65,7 +70,6 @@ contract TokenVault_Test is BaseTokenVaultFixture {
       STAKE_AMOUNT_1000
     );
 
-    vm.warp(block.timestamp + 100000);
     vm.expectRevert(abi.encodeWithSignature("TokenVault_AlreadyMigrated()"));
     fixture.tokenVault.stake(STAKE_AMOUNT_1000);
 
@@ -119,4 +123,6 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     vm.stopPrank();
   }
+
+  // function testClaimGov_
 }

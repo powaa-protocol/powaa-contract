@@ -18,6 +18,7 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     MockMigrator fakeMigrator;
     MockERC20 fakeRewardToken;
     MockERC20 fakeStakingToken;
+    MockERC20 fakeGovToken;
   }
 
   function _setupFakeERC20(string memory _name, string memory _symbol)
@@ -41,13 +42,19 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     address _rewardsDistribution,
     address _rewardsToken,
     address _stakingToken,
-    address _controller
+    address _controller,
+    address _govToken,
+    IFeeModel _withdrawalFeeModel,
+    bool _isGovLpVault
   ) internal returns (TokenVault) {
     TokenVault _impl = new TokenVault(
       _rewardsDistribution,
       _rewardsToken,
       _stakingToken,
-      _controller
+      _controller,
+      _govToken,
+      _withdrawalFeeModel,
+      _isGovLpVault
     );
 
     return _impl;
@@ -64,12 +71,16 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     _state.fakeMigrator = new MockMigrator();
     _state.fakeRewardToken = _setupFakeERC20("Reward Token", "RT");
     _state.fakeStakingToken = _setupFakeERC20("Staking Token", "ST");
+    _state.fakeGovToken = _setupFakeERC20("Gov Token", "GT");
 
     _state.tokenVault = _setupTokenVault(
       address(_state.rewardDistributor),
       address(_state.fakeRewardToken),
       address(_state.fakeStakingToken),
-      address(_state.controller)
+      address(_state.controller),
+      address(_state.fakeGovToken),
+      IFeeModel(address(_state.fakeFeeModel)),
+      false
     );
 
     return _state;

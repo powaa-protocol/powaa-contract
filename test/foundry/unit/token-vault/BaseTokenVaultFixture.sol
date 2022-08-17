@@ -3,6 +3,8 @@ pragma solidity 0.8.16;
 
 import "../_base/BaseTest.sol";
 import "../_mock/MockERC20.sol";
+import "../_mock/MockMigrator.sol";
+import "../_mock/MockFeeModel.sol";
 import "../../../../../contracts/v0.8.16/TokenVault.sol";
 
 abstract contract BaseTokenVaultFixture is BaseTest {
@@ -10,7 +12,10 @@ abstract contract BaseTokenVaultFixture is BaseTest {
 
   struct TokenVaultTestState {
     TokenVault tokenVault;
+    address controller;
     address rewardDistributor;
+    MockFeeModel fakeFeeModel;
+    MockMigrator fakeMigrator;
     MockERC20 fakeRewardToken;
     MockERC20 fakeStakingToken;
   }
@@ -36,15 +41,13 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     address _rewardsDistribution,
     address _rewardsToken,
     address _stakingToken,
-    address _controller,
-    uint256 _migrationFinishTime
+    address _controller
   ) internal returns (TokenVault) {
     TokenVault _impl = new TokenVault(
       _rewardsDistribution,
       _rewardsToken,
       _stakingToken,
-      _controller,
-      _migrationFinishTime
+      _controller
     );
 
     return _impl;
@@ -55,7 +58,10 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     returns (TokenVaultTestState memory)
   {
     TokenVaultTestState memory _state;
+    _state.controller = address(123451234);
     _state.rewardDistributor = address(123456789);
+    _state.fakeFeeModel = new MockFeeModel();
+    _state.fakeMigrator = new MockMigrator();
     _state.fakeRewardToken = _setupFakeERC20("Reward Token", "RT");
     _state.fakeStakingToken = _setupFakeERC20("Staking Token", "ST");
 
@@ -63,8 +69,7 @@ abstract contract BaseTokenVaultFixture is BaseTest {
       address(_state.rewardDistributor),
       address(_state.fakeRewardToken),
       address(_state.fakeStakingToken),
-      address(169),
-      block.timestamp
+      address(_state.controller)
     );
 
     return _state;

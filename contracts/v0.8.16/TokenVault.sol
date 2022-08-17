@@ -25,7 +25,6 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   address public rewardsToken;
   IERC20 public stakingToken;
   uint256 public periodFinish = 0;
-  uint256 public migrationFinish = 0;
   uint256 public rewardRate = 0;
   uint256 public rewardsDuration = 7 days;
 
@@ -82,14 +81,12 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     address _rewardsDistribution,
     address _rewardsToken,
     address _stakingToken,
-    address _controller,
-    uint256 _migrationFinishTime
+    address _controller
   ) {
     rewardsToken = _rewardsToken;
     stakingToken = IERC20(_stakingToken);
     rewardsDistribution = _rewardsDistribution;
     controller = _controller;
-    migrationFinish = _migrationFinishTime;
   }
 
   /* ========== MODIFIERS ========== */
@@ -245,8 +242,6 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     whenNotMigrated
     updateReward(msg.sender)
   {
-    if (block.timestamp > migrationFinish)
-      revert TokenVault_CannotStakeAfterMigration();
     if (_amount <= 0) revert TokenVault_CannotStakeZeroAmount();
 
     _totalSupply = _totalSupply.add(_amount);

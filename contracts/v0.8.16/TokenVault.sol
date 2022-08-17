@@ -48,13 +48,8 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
 
   uint256 public campaignStartBlock;
   uint256 public campaignEndBlock;
-  uint256 public migrateChainId;
-  uint256 public govLPTokenVaultFeeRate;
-  uint256 public treasuryFeeRate;
   uint256 public reserve;
 
-  address public treasury;
-  address public govLPTokenVault;
   IMigrator public migrator;
   address public controller;
 
@@ -65,21 +60,9 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   event RewardPaid(address indexed user, uint256 reward);
   event RewardsDurationUpdated(uint256 newDuration);
   event Recovered(address token, uint256 amount);
-  event SetMigrationOption(
-    IMigrator migrator,
-    address treasury,
-    uint256 campaignEndBlock,
-    uint256 govLPTokenVaultFeeRate,
-    uint256 treasuryFeeRate
-  );
-  event Migrate(
-    uint256 stakingTokenAmount,
-    uint256 vaultETHAmount,
-    uint256 govVaultETHFee,
-    uint256 treasuryETHFee
-  );
+  event SetMigrationOption(IMigrator migrator, uint256 campaignEndBlock);
+  event Migrate(uint256 stakingTokenAmount, uint256 vaultETHAmount);
   event ClaimETH(address indexed user, uint256 ethAmount);
-  event SetGovLPTokenVault(address govLPTokenVault);
 
   /* ========== ERRORS ========== */
   error TokenVault_CannotStakeZeroAmount();
@@ -88,12 +71,10 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   error TokenVault_CannotWithdrawStakingToken();
   error TokenVault_RewardPeriodMustBeCompleted();
   error TokenVault_NotRewardsDistributionContract();
-  error TokenVault_InvalidFee();
   error TokenVault_AlreadyMigrated();
   error TokenVault_NotYetMigrated();
   error TokenVault_InvalidChainId();
   error TokenVault_NotController();
-  error TokenVault_OnlyNonGovLPTokenVault();
   error TokenVault_LpTokenAddressInvalid();
 
   /* ========== CONSTRUCTOR ========== */
@@ -102,7 +83,6 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     address _rewardsToken,
     address _stakingToken,
     address _controller,
-    address _govToken,
     IFeeModel _withdrawalFeeModel,
     bool _isGovLpVault
   ) {
@@ -116,14 +96,14 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     if (!isGovLpVault) return;
 
     // if isGovLPVault is true, then need to do sanity check if stakingToken is GOV_TOKEN-WETH LP
-    if (_govToken > WETH) {
+    if (_rewardsToken > WETH) {
       if (
         address(ILp(_stakingToken).token0()) != address(WETH) ||
-        address(ILp(_stakingToken).token1()) != address(_govToken)
+        address(ILp(_stakingToken).token1()) != address(_rewardsToken)
       ) revert TokenVault_LpTokenAddressInvalid();
     } else {
       if (
-        address(ILp(_stakingToken).token0()) != address(_govToken) ||
+        address(ILp(_stakingToken).token0()) != address(_rewardsToken) ||
         address(ILp(_stakingToken).token1()) != address(WETH)
       ) revert TokenVault_LpTokenAddressInvalid();
     }
@@ -231,36 +211,14 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     rewardsDistribution = _rewardsDistribution;
   }
 
-  function setGovLPTokenVault(address _govLPTokenVault) external onlyOwner {
-    if (isGovLpVault) {
-      revert TokenVault_OnlyNonGovLPTokenVault();
-    }
-
-    govLPTokenVault = _govLPTokenVault;
-
-    emit SetGovLPTokenVault(_govLPTokenVault);
-  }
-
-  function setMigrationOption(
-    IMigrator _migrator,
-    address _treasury,
-    uint256 _campaignEndBlock,
-    uint256 _govLPTokenVaultFeeRate,
-    uint256 _treasuryFeeRate
-  ) external onlyOwner {
+  function setMigrationOption(IMigrator _migrator, uint256 _campaignEndBlock)
+    external
+    onlyOwner
+  {
     migrator = _migrator;
-    treasury = _treasury;
     campaignEndBlock = _campaignEndBlock;
-    govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
-    treasuryFeeRate = _treasuryFeeRate;
 
-    emit SetMigrationOption(
-      _migrator,
-      _treasury,
-      _campaignEndBlock,
-      _govLPTokenVaultFeeRate,
-      _treasuryFeeRate
-    );
+    emit SetMigrationOption(_migrator, _campaignEndBlock);
   }
 
   /* ========== MUTATIVE FUNCTIONS ========== */
@@ -273,27 +231,9 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     isMigrated = true;
 
     stakingToken.safeTransfer(address(migrator), _totalSupply);
-    migrator.execute();
+    migrator.execute(address(stakingToken));
 
-    if (!isGovLpVault) {
-      uint256 govLPTokenVaultFee = govLPTokenVaultFeeRate.mulWadDown(
-        address(this).balance
-      );
-      uint256 treasuryFee = treasuryFeeRate.mulWadDown(address(this).balance);
-
-      treasury.safeTransferETH(treasuryFee);
-      govLPTokenVault.safeTransferETH(govLPTokenVaultFee);
-
-      emit Migrate(
-        _totalSupply,
-        address(this).balance,
-        treasuryFee,
-        govLPTokenVaultFee
-      );
-      return;
-    }
-
-    emit Migrate(_totalSupply, address(this).balance, 0, 0);
+    emit Migrate(_totalSupply, address(this).balance);
   }
 
   function claimETH() external whenMigrated {
@@ -426,4 +366,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
 
     emit RewardsDurationUpdated(rewardsDuration);
   }
+
+  /// @dev Fallback function to accept ETH.
+  receive() external payable {}
 }

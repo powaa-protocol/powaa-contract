@@ -36,12 +36,14 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     address _rewardsDistribution,
     address _rewardsToken,
     address _stakingToken,
+    address _controller,
     uint256 _migrationFinishTime
   ) internal returns (TokenVault) {
     TokenVault _impl = new TokenVault(
       _rewardsDistribution,
       _rewardsToken,
       _stakingToken,
+      _controller,
       _migrationFinishTime
     );
 
@@ -61,6 +63,7 @@ abstract contract BaseTokenVaultFixture is BaseTest {
       address(_state.rewardDistributor),
       address(_state.fakeRewardToken),
       address(_state.fakeStakingToken),
+      address(169),
       block.timestamp
     );
 

@@ -21,7 +21,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
   function testStake_successfully() external {
     assertEq(
-      ZERO,
+      0,
       fixture.fakeStakingToken.balanceOf(address(fixture.tokenVault))
     );
     assertEq(0, fixture.fakeStakingToken.totalSupply());
@@ -93,7 +93,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     fixture.tokenVault.withdraw(STAKE_AMOUNT_1000);
     assertEq(
-      ZERO,
+      0,
       fixture.fakeStakingToken.balanceOf(address(fixture.tokenVault))
     );
     assertEq(0, fixture.tokenVault.totalSupply());

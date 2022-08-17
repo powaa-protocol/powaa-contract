@@ -143,11 +143,13 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     fixture.fakeStakingToken.mint(address(ALICE), 2000 ether);
     fixture.fakeRewardToken.mint(address(fixture.tokenVault), 100000000 ether);
 
-    // vm.warp(0);
-
+    vm.expectEmit(true, true, true, true);
+    emit RewardsDurationUpdated(10000 ether);
     fixture.tokenVault.setRewardsDuration(10000 ether);
 
     vm.prank(fixture.rewardDistributor);
+    vm.expectEmit(true, true, true, true);
+    emit RewardAdded(10000 ether);
     fixture.tokenVault.notifyRewardAmount(10000 ether);
 
     vm.startPrank(ALICE);
@@ -188,5 +190,86 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     // ((1000e18 * (4 - 0)) / 1e18) + 0
     assertEq(4000, fixture.fakeRewardToken.balanceOf(ALICE));
     assertEq(0, fixture.tokenVault.rewards(ALICE));
+  }
+
+  function testClaimGov_whenThereAreNoRewardToClaim() external {
+    vm.warp(1000);
+
+    fixture.fakeRewardToken.mint(address(fixture.tokenVault), 100000000 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit RewardsDurationUpdated(10000 ether);
+    fixture.tokenVault.setRewardsDuration(10000 ether);
+
+    vm.prank(fixture.rewardDistributor);
+    vm.expectEmit(true, true, true, true);
+    emit RewardAdded(10000 ether);
+    fixture.tokenVault.notifyRewardAmount(10000 ether);
+
+    vm.startPrank(ALICE);
+
+    vm.warp(5000);
+
+    fixture.tokenVault.claimGov();
+    vm.stopPrank();
+
+    assertEq(0, fixture.tokenVault.rewards(ALICE));
+  }
+
+  function testExit_successfully() external {
+    vm.warp(1000);
+
+    fixture.fakeStakingToken.mint(address(ALICE), 2000 ether);
+    fixture.fakeRewardToken.mint(address(fixture.tokenVault), 100000000 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit RewardsDurationUpdated(10000 ether);
+    fixture.tokenVault.setRewardsDuration(10000 ether);
+
+    vm.prank(fixture.rewardDistributor);
+    vm.expectEmit(true, true, true, true);
+    emit RewardAdded(10000 ether);
+    fixture.tokenVault.notifyRewardAmount(10000 ether);
+
+    vm.startPrank(ALICE);
+    fixture.fakeStakingToken.approve(
+      address(fixture.tokenVault),
+      STAKE_AMOUNT_1000
+    );
+    fixture.tokenVault.stake(STAKE_AMOUNT_1000);
+    assertEq(STAKE_AMOUNT_1000, fixture.tokenVault.totalSupply());
+
+    vm.warp(5000);
+
+    // 10000 ether / 10000 ether
+    assertEq(1, fixture.tokenVault.rewardRate());
+
+    // rewardPerTokenStored.add(
+    //   lastTimeRewardApplicable()
+    //     .sub(lastUpdateTime)
+    //     .mul(rewardRate)
+    //     .mul(1e18)
+    //     .div(_totalSupply)
+    // );
+
+    // ((((5000 - 1000) * 1) * 1e18) / 1000e18)
+    assertEq(4, fixture.tokenVault.rewardPerToken());
+
+    vm.expectEmit(true, true, true, true);
+    emit RewardPaid(address(ALICE), uint256(4000));
+
+    fixture.tokenVault.exit();
+    vm.stopPrank();
+
+    // _balances[_account]
+    //   .mul(rewardPerToken().sub(userRewardPerTokenPaid[_account]))
+    //   .div(1e18)
+    //   .add(rewards[_account]);
+
+    // ((1000e18 * (4 - 0)) / 1e18) + 0
+    assertEq(4000, fixture.fakeRewardToken.balanceOf(ALICE));
+    assertEq(0, fixture.tokenVault.rewards(ALICE));
+
+    assertEq(2000 ether, fixture.fakeStakingToken.balanceOf(ALICE));
   }
 }

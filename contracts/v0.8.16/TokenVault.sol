@@ -282,7 +282,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
         // if campaignStartBlock == 0, then no rewards notified yet, hence campaign hasn't started
         actualWithdrawalAmount = _amount;
       } else {
-        uint256 feeRate = withdrawalFeeModel.getFee(
+        uint256 feeRate = withdrawalFeeModel.getFeeRate(
           campaignStartBlock,
           block.number,
           campaignEndBlock

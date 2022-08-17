@@ -272,4 +272,51 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     assertEq(2000 ether, fixture.fakeStakingToken.balanceOf(ALICE));
   }
+
+  function testMigrate_successfully() external {
+    vm.warp(1000);
+
+    fixture.fakeStakingToken.mint(address(ALICE), 2000 ether);
+    fixture.fakeStakingToken.mint(address(BOB), 2000 ether);
+
+    fixture.fakeRewardToken.mint(address(fixture.tokenVault), 100000000 ether);
+
+    // setting up
+    fixture.tokenVault.setRewardsDuration(10000 ether);
+
+    vm.prank(fixture.rewardDistributor);
+    fixture.tokenVault.notifyRewardAmount(10000 ether);
+
+    fixture.tokenVault.setMigrationOption(
+      IMigrator(address(fixture.fakeMigrator)),
+      uint256(10000)
+    );
+
+    // users staking period
+
+    vm.startPrank(ALICE);
+    fixture.fakeStakingToken.approve(address(fixture.tokenVault), 500 ether);
+    fixture.tokenVault.stake(500 ether);
+    vm.stopPrank();
+
+    vm.startPrank(BOB);
+    fixture.fakeStakingToken.approve(address(fixture.tokenVault), 1500 ether);
+    fixture.tokenVault.stake(1500 ether);
+    vm.stopPrank();
+
+    assertEq(2000 ether, fixture.tokenVault.totalSupply());
+
+    vm.warp(10000);
+
+    fixture.fakeMigrator.mockSetMigrateRate(
+      address(fixture.fakeStakingToken),
+      1 ether
+    );
+
+    vm.startPrank(fixture.controller);
+    fixture.tokenVault.migrate();
+    vm.stopPrank();
+
+    assertEq(2000 ether, address(fixture.tokenVault).balance);
+  }
 }

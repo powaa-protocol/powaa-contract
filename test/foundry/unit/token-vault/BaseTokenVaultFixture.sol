@@ -79,6 +79,10 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     _state.fakeRewardToken = _setupFakeERC20("Reward Token", "RT");
     _state.fakeStakingToken = _setupFakeERC20("Staking Token", "ST");
 
+    // we pre-minted plenty of native tokens for the mocked migrator
+    // and pretend that it actually does the swapping when we executing migration
+    vm.deal(address(_state.fakeMigrator), 10000000 ether);
+
     _state.tokenVault = _setupTokenVault(
       address(_state.rewardDistributor),
       address(_state.fakeRewardToken),

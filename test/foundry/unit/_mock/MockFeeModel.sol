@@ -10,7 +10,7 @@ contract MockFeeModel is MockContract {
     fee = _fee;
   }
 
-  function getFee(
+  function getFeeRate(
     uint256 startBlock,
     uint256 currentBlock,
     uint256 endBlock

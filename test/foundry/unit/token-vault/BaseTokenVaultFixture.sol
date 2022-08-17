@@ -10,6 +10,28 @@ import "../../../../../contracts/v0.8.16/TokenVault.sol";
 abstract contract BaseTokenVaultFixture is BaseTest {
   uint256 public constant STAKE_AMOUNT_1000 = 1000 * 1e18;
 
+  event RewardAdded(uint256 reward);
+  event Staked(address indexed user, uint256 amount);
+  event Withdrawn(address indexed user, uint256 amount);
+  event RewardPaid(address indexed user, uint256 reward);
+  event RewardsDurationUpdated(uint256 newDuration);
+  event Recovered(address token, uint256 amount);
+  event SetMigrationOption(
+    IMigrator migrator,
+    address treasury,
+    uint256 campaignEndBlock,
+    uint256 govLPTokenVaultFeeRate,
+    uint256 treasuryFeeRate
+  );
+  event Migrate(
+    uint256 stakingTokenAmount,
+    uint256 vaultETHAmount,
+    uint256 govVaultETHFee,
+    uint256 treasuryETHFee
+  );
+  event ClaimETH(address indexed user, uint256 ethAmount);
+  event SetGovLPTokenVault(address govLPTokenVault);
+
   struct TokenVaultTestState {
     TokenVault tokenVault;
     address controller;

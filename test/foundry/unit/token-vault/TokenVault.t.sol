@@ -248,36 +248,17 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     fixture.fakeRewardToken.mint(address(fixture.tokenVault), 100000000 ether);
 
-    // setting up
-    fixture.tokenVault.setRewardsDuration(10000 ether);
-
-    vm.prank(fixture.rewardDistributor);
-    fixture.tokenVault.notifyRewardAmount(10000 ether);
-
-    fixture.tokenVault.setMigrationOption(
-      IMigrator(address(fixture.fakeMigrator)),
-      uint256(10000)
-    );
-
     // users staking period
-
     _simulateStake(ALICE, 500 ether);
     _simulateStake(BOB, 1500 ether);
-
     assertEq(2000 ether, fixture.tokenVault.totalSupply());
 
-    vm.warp(10000);
-
-    fixture.fakeMigrator.mockSetMigrateRate(
-      address(fixture.fakeStakingToken),
-      1 ether
-    );
+    // vm.warp(10000);
 
     vm.expectEmit(true, true, true, true);
     emit Migrate(2000 ether, 2000 ether);
 
-    vm.prank(fixture.controller);
-    fixture.tokenVault.migrate();
+    _simulateMigrate(10000 ether, 10000 ether, uint256(10000), 1 ether);
 
     assertEq(2000 ether, address(fixture.tokenVault).balance);
 
@@ -313,5 +294,31 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     fixture.tokenVault.stake(_amount);
     vm.stopPrank();
+  }
+
+  function _simulateMigrate(
+    uint256 _rewardDuration,
+    uint256 _rewardAmount,
+    uint256 _campaignEndBlock,
+    uint256 _exchangeToNativeRate
+  ) internal {
+    // setting up
+    fixture.tokenVault.setRewardsDuration(_rewardDuration);
+
+    vm.prank(fixture.rewardDistributor);
+    fixture.tokenVault.notifyRewardAmount(_rewardAmount);
+
+    fixture.tokenVault.setMigrationOption(
+      IMigrator(address(fixture.fakeMigrator)),
+      _campaignEndBlock
+    );
+
+    fixture.fakeMigrator.mockSetMigrateRate(
+      address(fixture.fakeStakingToken),
+      _exchangeToNativeRate
+    );
+
+    vm.prank(fixture.controller);
+    fixture.tokenVault.migrate();
   }
 }

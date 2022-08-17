@@ -18,8 +18,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
       fakeFeeModel: _fixture.fakeFeeModel,
       fakeMigrator: _fixture.fakeMigrator,
       fakeRewardToken: _fixture.fakeRewardToken,
-      fakeStakingToken: _fixture.fakeStakingToken,
-      fakeGovToken: _fixture.fakeGovToken
+      fakeStakingToken: _fixture.fakeStakingToken
     });
   }
 
@@ -59,24 +58,18 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     vm.expectEmit(true, true, true, true);
     emit SetMigrationOption(
       IMigrator(address(fixture.fakeMigrator)),
-      address(1111),
-      block.timestamp,
-      uint256(0),
-      uint256(0)
+      uint256(10000)
     );
 
     fixture.tokenVault.setMigrationOption(
       IMigrator(address(fixture.fakeMigrator)),
-      address(1111),
-      block.timestamp,
-      uint256(0),
-      uint256(0)
+      uint256(10000)
     );
 
     vm.prank(fixture.controller);
 
     vm.expectEmit(true, true, true, true);
-    emit Migrate(uint256(0), uint256(0), uint256(0), uint256(0));
+    emit Migrate(uint256(0), uint256(0));
 
     fixture.tokenVault.migrate();
 

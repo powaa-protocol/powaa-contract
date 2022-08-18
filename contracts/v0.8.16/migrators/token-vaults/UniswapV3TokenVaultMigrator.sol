@@ -8,11 +8,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/IPeripheryPayments.sol";
-import "@uniswap/v3-periphery/contracts/interfaces/external/IWETH9.sol";
 
 import "../../../../lib/solmate/src/utils/SafeTransferLib.sol";
 import "../../../../lib/solmate/src/utils/FixedPointMathLib.sol";
 import "../../interfaces/IMigrator.sol";
+import "../../interfaces/IWETH9.sol";
 
 contract UniswapV2TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeTransferLib for address;
@@ -96,7 +96,6 @@ contract UniswapV2TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   /* ========== EXTERNAL FUNCTIONS ========== */
   function _unwrapWETH(address _recipient) private {
     uint256 balanceWETH9 = IWETH9(WETH9).balanceOf(address(this));
-    require(balanceWETH9 >= amountMinimum, "Insufficient WETH9");
 
     if (balanceWETH9 > 0) {
       IWETH9(WETH9).withdraw(balanceWETH9);

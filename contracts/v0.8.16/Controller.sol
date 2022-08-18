@@ -5,7 +5,6 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./interfaces/ITokenVault.sol";
-import "forge-std/console2.sol";
 
 contract Controller is Ownable {
   /* ========== STATE VARIABLES ========== */
@@ -20,7 +19,6 @@ contract Controller is Ownable {
   error Controller_NoVaults();
 
   /* ========== CONSTRUCTOR ========== */
-  constructor() {}
 
   function whitelistVault(address _vault) public {
     vaults.push(_vault);

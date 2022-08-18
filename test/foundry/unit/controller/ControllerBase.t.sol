@@ -5,6 +5,7 @@ import "../_base/BaseTest.sol";
 import "mock-contract/MockContract.sol";
 import "../../../../contracts/v0.8.16/Controller.sol";
 
+/// @title An abstraction of the Controller Testing contract, containing a scaffolding method for creating the fixture
 abstract contract ControllerBaseTest is BaseTest {
   MockContract internal mockTokenVault;
   Controller internal controller;

@@ -11,53 +11,31 @@ import "../../../../lib/solmate/src/utils/SafeTransferLib.sol";
 import "../../../../lib/solmate/src/utils/FixedPointMathLib.sol";
 import "../../interfaces/IMigrator.sol";
 import "../../interfaces/apis/IUniswapV2Router02.sol";
+import "../../interfaces/ILp.sol";
 
-contract UniswapV2TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
+contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeTransferLib for address;
   using FixedPointMathLib for uint256;
   using SafeERC20 for IERC20;
 
   /* ========== CONSTANT ========== */
-  address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+  address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
   /* ========== STATE VARIABLES ========== */
-  uint256 public govLPTokenVaultFeeRate;
-  uint256 public treasuryFeeRate;
-
-  address public treasury;
-  address public govLPTokenVault;
   IUniswapV2Router02 public router;
 
   mapping(address => bool) public tokenVaultOK;
 
   /* ========== EVENTS ========== */
   event RewardAdded(uint256 reward);
-  event Execute(
-    uint256 vaultReward,
-    uint256 govLPTokenVaultReward,
-    uint256 treasuryReward
-  );
+  event Execute(uint256 vaultReward);
 
   /* ========== ERRORS ========== */
   error UniswapV2VaultMigrator_OnlyWhitelistedTokenVault();
   error UniswapV2VaultMigrator_InvalidFeeRate();
 
   /* ========== CONSTRUCTOR ========== */
-  constructor(
-    address _treasury,
-    address _govLPTokenVault,
-    uint256 _govLPTokenVaultFeeRate,
-    uint256 _treasuryFeeRate,
-    IUniswapV2Router02 _router
-  ) {
-    if (govLPTokenVaultFeeRate + treasuryFeeRate >= 1e18) {
-      revert UniswapV2VaultMigrator_InvalidFeeRate();
-    }
-
-    treasury = _treasury;
-    govLPTokenVault = _govLPTokenVault;
-    govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
-    treasuryFeeRate = _treasuryFeeRate;
+  constructor(IUniswapV2Router02 _router) {
     router = _router;
   }
 
@@ -79,21 +57,33 @@ contract UniswapV2TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   }
 
   /* ========== EXTERNAL FUNCTIONS ========== */
-  function execute(address token)
+  function execute(bytes calldata _data)
     external
     onlyWhitelistedTokenVault(msg.sender)
     nonReentrant
   {
-    address[] memory _path = new address[](2);
-    _path[0] = token;
-    _path[1] = WETH;
-    uint256 swapAmount = IERC20(token).balanceOf(address(this));
-    uint256 govLPTokenVaultFee = govLPTokenVaultFeeRate.mulWadDown(
-      address(this).balance
-    );
-    uint256 treasuryFee = treasuryFeeRate.mulWadDown(address(this).balance);
+    address lpToken = abi.decode(_data, (address));
+    address baseToken = address(ILp(lpToken).token0()) != address(WETH9)
+      ? address(ILp(lpToken).token0())
+      : address(ILp(lpToken).token1());
 
-    IERC20(token).approve(address(router), swapAmount);
+    uint256 liquidity = IERC20(lpToken).balanceOf(address(this));
+    IERC20(lpToken).approve(address(router), liquidity);
+    router.removeLiquidityETH(
+      baseToken,
+      liquidity,
+      0,
+      0,
+      address(this),
+      block.timestamp
+    );
+
+    address[] memory _path = new address[](2);
+    _path[0] = baseToken;
+    _path[1] = WETH9;
+    uint256 swapAmount = IERC20(baseToken).balanceOf(address(this));
+
+    IERC20(baseToken).approve(address(router), swapAmount);
     router.swapExactTokensForETH(
       swapAmount,
       0,
@@ -103,11 +93,8 @@ contract UniswapV2TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     );
 
     uint256 vaultReward = address(this).balance;
-
-    treasury.safeTransferETH(treasuryFee);
-    govLPTokenVault.safeTransferETH(govLPTokenVaultFee);
     msg.sender.safeTransferETH(vaultReward);
 
-    emit Execute(vaultReward, govLPTokenVaultFee, treasuryFee);
+    emit Execute(vaultReward);
   }
 }

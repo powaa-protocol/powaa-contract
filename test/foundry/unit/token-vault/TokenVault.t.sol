@@ -321,4 +321,22 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     fixture.tokenVault.migrate();
   }
+
+  function testClaimETH_successfully() external {
+    fixture.fakeRewardToken.mint(address(fixture.tokenVault), 100000000 ether);
+
+    _simulateStake(ALICE, 500 ether);
+    _simulateStake(BOB, 1500 ether);
+    _simulateMigrate(10000 ether, 10000 ether, uint256(10000), 1 ether);
+
+    assertEq(2000 ether, address(fixture.tokenVault).balance);
+
+    vm.prank(BOB);
+    fixture.tokenVault.claimETH();
+    vm.prank(ALICE);
+    fixture.tokenVault.claimETH();
+
+    assertEq(500 ether, ALICE.balance);
+    assertEq(1500 ether, BOB.balance);
+  }
 }

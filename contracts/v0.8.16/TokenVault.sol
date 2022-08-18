@@ -22,7 +22,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   using SafeERC20 for IERC20;
 
   /* ========== CONSTANT ========== */
-  address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+  address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
   /* ========== STATE VARIABLES ========== */
   address public rewardsDistribution;
@@ -40,6 +40,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
 
   uint256 private _totalSupply;
   mapping(address => uint256) private _balances;
+  uint256 public ethSupply;
 
   /* ========== STATE VARIABLES: Migration Options ========== */
   IFeeModel public withdrawalFeeModel;
@@ -49,6 +50,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   uint256 public campaignStartBlock;
   uint256 public campaignEndBlock;
   uint256 public reserve;
+  uint24 public feePool; // applicable only for token vault (gov lp vault doesn't have a feepool)
 
   IMigrator public migrator;
   address public controller;
@@ -60,7 +62,11 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   event RewardPaid(address indexed user, uint256 reward);
   event RewardsDurationUpdated(uint256 newDuration);
   event Recovered(address token, uint256 amount);
-  event SetMigrationOption(IMigrator migrator, uint256 campaignEndBlock);
+  event SetMigrationOption(
+    IMigrator migrator,
+    uint256 campaignEndBlock,
+    uint24 feePool
+  );
   event Migrate(uint256 stakingTokenAmount, uint256 vaultETHAmount);
   event ClaimETH(address indexed user, uint256 ethAmount);
 
@@ -95,16 +101,16 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
 
     if (!isGovLpVault) return;
 
-    // if isGovLPVault is true, then need to do sanity check if stakingToken is GOV_TOKEN-WETH LP
-    if (_rewardsToken > WETH) {
+    // if isGovLPVault is true, then need to do sanity check if stakingToken is GOV_TOKEN-WETH9 LP
+    if (_rewardsToken > WETH9) {
       if (
-        address(ILp(_stakingToken).token0()) != address(WETH) ||
+        address(ILp(_stakingToken).token0()) != address(WETH9) ||
         address(ILp(_stakingToken).token1()) != address(_rewardsToken)
       ) revert TokenVault_LpTokenAddressInvalid();
     } else {
       if (
         address(ILp(_stakingToken).token0()) != address(_rewardsToken) ||
-        address(ILp(_stakingToken).token1()) != address(WETH)
+        address(ILp(_stakingToken).token1()) != address(WETH9)
       ) revert TokenVault_LpTokenAddressInvalid();
     }
   }
@@ -211,14 +217,16 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     rewardsDistribution = _rewardsDistribution;
   }
 
-  function setMigrationOption(IMigrator _migrator, uint256 _campaignEndBlock)
-    external
-    onlyOwner
-  {
+  function setMigrationOption(
+    IMigrator _migrator,
+    uint256 _campaignEndBlock,
+    uint24 _feePool
+  ) external onlyOwner {
     migrator = _migrator;
     campaignEndBlock = _campaignEndBlock;
+    feePool = _feePool;
 
-    emit SetMigrationOption(_migrator, _campaignEndBlock);
+    emit SetMigrationOption(_migrator, _campaignEndBlock, _feePool);
   }
 
   /* ========== MUTATIVE FUNCTIONS ========== */
@@ -229,16 +237,21 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     }
 
     isMigrated = true;
+    bytes memory data = isGovLpVault
+      ? abi.encode(address(stakingToken))
+      : abi.encode(address(rewardsToken), feePool);
 
     stakingToken.safeTransfer(address(migrator), _totalSupply);
-    migrator.execute(address(stakingToken));
+    migrator.execute(data);
 
-    emit Migrate(_totalSupply, address(this).balance);
+    ethSupply = address(this).balance;
+
+    emit Migrate(_totalSupply, ethSupply);
   }
 
   function claimETH() external whenMigrated {
     uint256 claimable = _balances[msg.sender].mulDivDown(
-      address(this).balance,
+      ethSupply,
       _totalSupply
     );
 

@@ -12,11 +12,11 @@ abstract contract ControllerBaseTest is BaseTest {
   /// @dev Foundry's setUp method
   function setUp() public virtual {
     mockTokenVault = new MockContract();
-    controller = _setupController(address(mockTokenVault));
+    controller = _setupController();
   }
 
-  function _setupController(address _vault) internal returns (Controller) {
-    Controller _controller = new Controller(_vault);
+  function _setupController() internal returns (Controller) {
+    Controller _controller = new Controller();
 
     return _controller;
   }

@@ -10,33 +10,29 @@ import "forge-std/console2.sol";
 contract Controller is Ownable {
   /* ========== STATE VARIABLES ========== */
   address[] public vaults;
-  mapping(address => bool) public vaultsRegister;
+  mapping(address => bool) public registeredVaults;
 
   /* ========== EVENTS ========== */
   event Migrate(address[] vaults);
-  event Vault(address vault);
+  event SetVault(address vault);
 
   /* ========== ERRORS ========== */
   error Controller_NoVaults();
 
   /* ========== CONSTRUCTOR ========== */
-  constructor(address _vault) {
-    vaults.push(_vault);
-    vaultsRegister[_vault] = false;
-  }
+  constructor() {}
 
-  function setVault(address _vault) public {
+  function whitelistVault(address _vault) public {
     vaults.push(_vault);
-    vaultsRegister[_vault] = false;
+    registeredVaults[_vault] = true;
 
-    emit Vault(_vault);
+    emit SetVault(_vault);
   }
 
   function migrate() public onlyOwner {
     if (vaults.length == 0) revert Controller_NoVaults();
     for (uint256 index = 0; index < vaults.length; index++) {
       ITokenVault(vaults[index]).migrate();
-      vaultsRegister[vaults[index]] = true;
     }
 
     emit Migrate(vaults);

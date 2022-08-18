@@ -72,7 +72,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     fixture.tokenVault.migrate();
   }
 
-  function testStake_successfully() external {
+  function testStake_whenStakingIsAllowed() external {
     assertEq(
       0,
       fixture.fakeStakingToken.balanceOf(address(fixture.tokenVault))
@@ -122,7 +122,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     vm.stopPrank();
   }
 
-  function testWithdraw_successfully() external {
+  function testWithdraw_whenWithdrawalIsAllowed() external {
     fixture.fakeStakingToken.mint(ALICE, STAKE_AMOUNT_1000);
     _simulateStake(ALICE, STAKE_AMOUNT_1000);
 
@@ -156,7 +156,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     vm.stopPrank();
   }
 
-  function testClaimGov_successfully() external {
+  function testClaimGov_whenUserRewardIsAvailableAndUnclaimed() external {
     vm.expectEmit(true, true, true, true);
     emit RewardsDurationUpdated(10000 ether);
     fixture.tokenVault.setRewardsDuration(10000 ether);
@@ -223,7 +223,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     assertEq(0, fixture.tokenVault.rewards(ALICE));
   }
 
-  function testExit_successfully() external {
+  function testExit_whenUserStakedAndAvailableRewardUnclaimed() external {
     vm.expectEmit(true, true, true, true);
     emit RewardsDurationUpdated(10000 ether);
     fixture.tokenVault.setRewardsDuration(10000 ether);
@@ -272,7 +272,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     assertEq(1000 ether, fixture.fakeStakingToken.balanceOf(ALICE));
   }
 
-  function testMigrate_successfully() external {
+  function testMigrate_whenParamsAreProperlySettedUp() external {
     // users staking period
     fixture.fakeStakingToken.mint(ALICE, 500 ether);
     _simulateStake(ALICE, 500 ether);
@@ -310,7 +310,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     fixture.tokenVault.migrate();
   }
 
-  function testClaimETH_successfully() external {
+  function testClaimETH_whenUsersProperlyStaked() external {
     fixture.fakeStakingToken.mint(ALICE, 500 ether);
     _simulateStake(ALICE, 500 ether);
     fixture.fakeStakingToken.mint(BOB, 1500 ether);

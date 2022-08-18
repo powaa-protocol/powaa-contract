@@ -2,5 +2,5 @@
 pragma solidity 0.8.16;
 
 interface IMigrator {
-  function execute() external;
+  function execute(bytes calldata data) external;
 }

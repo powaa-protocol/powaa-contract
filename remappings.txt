@@ -4,3 +4,4 @@ ds-test/=lib/forge-std/lib/ds-test/src/
 @gnosis.pm/mock-contract/=lib/mock-contract/contracts/
 mock-contract/=lib/mock-contract/contracts/
 @rari-capital/solmate/=lib/solmate/src/
+@uniswap=node_modules/@uniswap/

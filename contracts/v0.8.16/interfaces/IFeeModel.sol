@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 interface IFeeModel {
-  function getFee(
+  function getFeeRate(
     uint256 startBlock,
     uint256 currentBlock,
     uint256 endBlock

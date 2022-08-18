@@ -13,12 +13,16 @@ import "../../lib/solmate/src/utils/FixedPointMathLib.sol";
 import "./interfaces/ITokenVault.sol";
 import "./interfaces/IMigrator.sol";
 import "./interfaces/IFeeModel.sol";
+import "./interfaces/ILp.sol";
 
 contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   using SafeTransferLib for address;
   using FixedPointMathLib for uint256;
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
+
+  /* ========== CONSTANT ========== */
+  address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
   /* ========== STATE VARIABLES ========== */
   address public rewardsDistribution;
@@ -31,20 +35,25 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   uint256 public lastUpdateTime;
   uint256 public rewardPerTokenStored;
 
-  /* ========== STATE VARIABLES: Migration Options ========== */
-  bool public isMigrated;
-  uint256 public campaignStartBlock;
-  uint256 public campaignEndBlock;
-  uint256 public migrateChainId;
-  IFeeModel public feeModel;
-  IMigrator public migrator;
-  address public controller;
-
   mapping(address => uint256) public userRewardPerTokenPaid;
   mapping(address => uint256) public rewards;
 
   uint256 private _totalSupply;
   mapping(address => uint256) private _balances;
+  uint256 public ethSupply;
+
+  /* ========== STATE VARIABLES: Migration Options ========== */
+  IFeeModel public withdrawalFeeModel;
+  bool public isGovLpVault;
+  bool public isMigrated;
+
+  uint256 public campaignStartBlock;
+  uint256 public campaignEndBlock;
+  uint256 public reserve;
+  uint24 public feePool; // applicable only for token vault (gov lp vault doesn't have a feepool)
+
+  IMigrator public migrator;
+  address public controller;
 
   /* ========== EVENTS ========== */
   event RewardAdded(uint256 reward);
@@ -54,12 +63,11 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   event RewardsDurationUpdated(uint256 newDuration);
   event Recovered(address token, uint256 amount);
   event SetMigrationOption(
-    bool isMigrated,
+    IMigrator migrator,
     uint256 campaignEndBlock,
-    IFeeModel feeModel,
-    IMigrator migrator
+    uint24 feePool
   );
-  event Migrate(uint256 stakingTokenAmount, uint256 ethAmount);
+  event Migrate(uint256 stakingTokenAmount, uint256 vaultETHAmount);
   event ClaimETH(address indexed user, uint256 ethAmount);
 
   /* ========== ERRORS ========== */
@@ -69,23 +77,42 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   error TokenVault_CannotWithdrawStakingToken();
   error TokenVault_RewardPeriodMustBeCompleted();
   error TokenVault_NotRewardsDistributionContract();
-  error TokenVault_InvalidFee();
   error TokenVault_AlreadyMigrated();
   error TokenVault_NotYetMigrated();
   error TokenVault_InvalidChainId();
   error TokenVault_NotController();
+  error TokenVault_LpTokenAddressInvalid();
 
   /* ========== CONSTRUCTOR ========== */
   constructor(
     address _rewardsDistribution,
     address _rewardsToken,
     address _stakingToken,
-    address _controller
+    address _controller,
+    IFeeModel _withdrawalFeeModel,
+    bool _isGovLpVault
   ) {
     rewardsToken = _rewardsToken;
     stakingToken = IERC20(_stakingToken);
     rewardsDistribution = _rewardsDistribution;
     controller = _controller;
+    withdrawalFeeModel = _withdrawalFeeModel;
+    isGovLpVault = _isGovLpVault;
+
+    if (!isGovLpVault) return;
+
+    // if isGovLPVault is true, then need to do sanity check if stakingToken is GOV_TOKEN-WETH9 LP
+    if (_rewardsToken > WETH9) {
+      if (
+        address(ILp(_stakingToken).token0()) != address(WETH9) ||
+        address(ILp(_stakingToken).token1()) != address(_rewardsToken)
+      ) revert TokenVault_LpTokenAddressInvalid();
+    } else {
+      if (
+        address(ILp(_stakingToken).token0()) != address(_rewardsToken) ||
+        address(ILp(_stakingToken).token1()) != address(WETH9)
+      ) revert TokenVault_LpTokenAddressInvalid();
+    }
   }
 
   /* ========== MODIFIERS ========== */
@@ -191,17 +218,15 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   }
 
   function setMigrationOption(
-    bool _isMigrated,
+    IMigrator _migrator,
     uint256 _campaignEndBlock,
-    IFeeModel _feeModel,
-    IMigrator _migrator
+    uint24 _feePool
   ) external onlyOwner {
-    isMigrated = _isMigrated;
-    campaignEndBlock = _campaignEndBlock;
-    feeModel = _feeModel;
     migrator = _migrator;
+    campaignEndBlock = _campaignEndBlock;
+    feePool = _feePool;
 
-    emit SetMigrationOption(isMigrated, campaignEndBlock, feeModel, migrator);
+    emit SetMigrationOption(_migrator, _campaignEndBlock, _feePool);
   }
 
   /* ========== MUTATIVE FUNCTIONS ========== */
@@ -212,23 +237,28 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     }
 
     isMigrated = true;
+    bytes memory data = isGovLpVault
+      ? abi.encode(address(stakingToken))
+      : abi.encode(address(rewardsToken), feePool);
 
     stakingToken.safeTransfer(address(migrator), _totalSupply);
-    migrator.execute();
+    migrator.execute(data);
 
-    uint256 feeWad = feeModel.getFee(
-      campaignStartBlock,
-      block.number,
-      campaignEndBlock
-    );
-    uint256 fee = feeWad.mulWadDown(address(this).balance);
-    msg.sender.safeTransferETH(fee);
+    ethSupply = address(this).balance;
 
-    emit Migrate(_totalSupply, fee);
+    emit Migrate(_totalSupply, ethSupply);
   }
 
   function claimETH() external whenMigrated {
-    uint256 claimable = _balances[msg.sender].divWadDown(_totalSupply);
+    uint256 claimable = _balances[msg.sender].mulDivDown(
+      ethSupply,
+      _totalSupply
+    );
+
+    if (claimable == 0) {
+      return;
+    }
+
     msg.sender.safeTransferETH(claimable);
 
     emit ClaimETH(msg.sender, claimable);
@@ -258,9 +288,28 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   {
     if (_amount <= 0) revert TokenVault_CannotWithdrawZeroAmount();
 
+    // actual withdrawal amount calculation with fee calculation
+    uint256 actualWithdrawalAmount;
+    {
+      if (campaignStartBlock == 0) {
+        // if campaignStartBlock == 0, then no rewards notified yet, hence campaign hasn't started
+        actualWithdrawalAmount = _amount;
+      } else {
+        uint256 feeRate = withdrawalFeeModel.getFeeRate(
+          campaignStartBlock,
+          block.number,
+          campaignEndBlock
+        );
+        uint256 withdrawalFee = feeRate.mulWadDown(_amount);
+        reserve += withdrawalFee;
+        actualWithdrawalAmount = _amount - withdrawalFee;
+      }
+    }
+
     _totalSupply = _totalSupply.sub(_amount);
     _balances[msg.sender] = _balances[msg.sender].sub(_amount);
-    stakingToken.safeTransfer(msg.sender, _amount);
+
+    stakingToken.safeTransfer(msg.sender, actualWithdrawalAmount);
 
     emit Withdrawn(msg.sender, _amount);
   }
@@ -330,4 +379,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
 
     emit RewardsDurationUpdated(rewardsDuration);
   }
+
+  /// @dev Fallback function to accept ETH.
+  receive() external payable {}
 }

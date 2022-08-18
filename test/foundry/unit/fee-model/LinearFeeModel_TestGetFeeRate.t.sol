@@ -4,9 +4,6 @@ pragma solidity ^0.8.16;
 import "./LinearFeeModelBase.t.sol";
 
 contract LinearFeeModel_TestGetFeeRate is LinearFeeModelBaseTest {
-  // Controller event
-  event SetVault(address vault);
-
   /// @dev foundry's setUp method
   function setUp() public override {
     super.setUp();

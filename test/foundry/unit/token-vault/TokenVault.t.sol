@@ -22,6 +22,45 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     });
   }
 
+  function _simulateStake(address _user, uint256 _amount) internal {
+    fixture.fakeStakingToken.mint(_user, _amount);
+
+    vm.startPrank(_user);
+    fixture.fakeStakingToken.approve(address(fixture.tokenVault), _amount);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(_user, _amount);
+
+    fixture.tokenVault.stake(_amount);
+    vm.stopPrank();
+  }
+
+  function _simulateMigrate(
+    uint256 _rewardDuration,
+    uint256 _rewardAmount,
+    uint256 _campaignEndBlock,
+    uint256 _exchangeToNativeRate
+  ) internal {
+    // setting up
+    fixture.tokenVault.setRewardsDuration(_rewardDuration);
+
+    vm.prank(fixture.rewardDistributor);
+    fixture.tokenVault.notifyRewardAmount(_rewardAmount);
+
+    fixture.tokenVault.setMigrationOption(
+      IMigrator(address(fixture.fakeMigrator)),
+      _campaignEndBlock
+    );
+
+    fixture.fakeMigrator.mockSetMigrateRate(
+      address(fixture.fakeStakingToken),
+      _exchangeToNativeRate
+    );
+
+    vm.prank(fixture.controller);
+    fixture.tokenVault.migrate();
+  }
+
   function testStake_successfully() external {
     assertEq(
       0,
@@ -280,45 +319,6 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   function testMigrate_whenCallerIsNotController() external {
     vm.expectRevert(abi.encodeWithSignature("TokenVault_NotController()"));
 
-    fixture.tokenVault.migrate();
-  }
-
-  function _simulateStake(address _user, uint256 _amount) internal {
-    fixture.fakeStakingToken.mint(_user, _amount);
-
-    vm.startPrank(_user);
-    fixture.fakeStakingToken.approve(address(fixture.tokenVault), _amount);
-
-    vm.expectEmit(true, true, true, true);
-    emit Staked(_user, _amount);
-
-    fixture.tokenVault.stake(_amount);
-    vm.stopPrank();
-  }
-
-  function _simulateMigrate(
-    uint256 _rewardDuration,
-    uint256 _rewardAmount,
-    uint256 _campaignEndBlock,
-    uint256 _exchangeToNativeRate
-  ) internal {
-    // setting up
-    fixture.tokenVault.setRewardsDuration(_rewardDuration);
-
-    vm.prank(fixture.rewardDistributor);
-    fixture.tokenVault.notifyRewardAmount(_rewardAmount);
-
-    fixture.tokenVault.setMigrationOption(
-      IMigrator(address(fixture.fakeMigrator)),
-      _campaignEndBlock
-    );
-
-    fixture.fakeMigrator.mockSetMigrateRate(
-      address(fixture.fakeStakingToken),
-      _exchangeToNativeRate
-    );
-
-    vm.prank(fixture.controller);
     fixture.tokenVault.migrate();
   }
 }

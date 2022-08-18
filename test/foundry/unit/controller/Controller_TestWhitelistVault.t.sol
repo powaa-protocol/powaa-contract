@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 
 import "./ControllerBase.t.sol";
 
-contract Controller_TestMigration is ControllerBaseTest {
+contract Controller_TestWhitelistVault is ControllerBaseTest {
   // Controller event
   event SetVault(address vault);
 

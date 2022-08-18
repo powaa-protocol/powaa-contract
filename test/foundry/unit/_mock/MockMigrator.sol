@@ -17,7 +17,10 @@ contract MockMigrator is MockContract {
     exchangeRate[_token] = _exchangeRate;
   }
 
-  function execute(address token) external {
+  function execute(bytes calldata _data) external {
+    (address token, uint24 poolFee) = abi.decode(_data, (address, uint24));
+    poolFee;
+
     uint256 tokenBalance = IERC20(token).balanceOf(address(this));
     uint256 migratedAmount = tokenBalance.mul(exchangeRate[token]).div(1 ether);
 

@@ -46,6 +46,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     uint256 _rewardDuration,
     uint256 _rewardAmount,
     uint256 _campaignEndBlock,
+    uint24 _feePool,
     uint256 _exchangeToNativeRate
   ) internal {
     // setting up
@@ -56,11 +57,16 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     fixture.tokenVault.setMigrationOption(
       IMigrator(address(fixture.fakeMigrator)),
-      _campaignEndBlock
+      _campaignEndBlock,
+      _feePool
     );
 
     fixture.fakeMigrator.mockSetMigrateRate(
       address(fixture.fakeStakingToken),
+      _exchangeToNativeRate
+    );
+    fixture.fakeMigrator.mockSetMigrateRate(
+      address(fixture.fakeRewardToken),
       _exchangeToNativeRate
     );
 
@@ -90,7 +96,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     vm.expectEmit(true, true, true, true);
     emit Migrate(uint256(0), uint256(0));
 
-    _simulateMigrate(1, 1, 10000, 1 ether);
+    _simulateMigrate(1, 1, 10000, 0, 1 ether);
 
     vm.startPrank(ALICE);
 
@@ -283,7 +289,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     vm.expectEmit(true, true, true, true);
     emit Migrate(2000 ether, 2000 ether);
 
-    _simulateMigrate(10000 ether, 10000 ether, uint256(10000), 1 ether);
+    _simulateMigrate(10000 ether, 10000 ether, 10000, 0, 1 ether);
 
     assertEq(2000 ether, address(fixture.tokenVault).balance);
 
@@ -311,7 +317,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   function testClaimETH_successfully() external {
     _simulateStake(ALICE, 500 ether);
     _simulateStake(BOB, 1500 ether);
-    _simulateMigrate(10000 ether, 10000 ether, uint256(10000), 1 ether);
+    _simulateMigrate(10000 ether, 10000 ether, 10000, 0, 1 ether);
 
     assertEq(2000 ether, address(fixture.tokenVault).balance);
 

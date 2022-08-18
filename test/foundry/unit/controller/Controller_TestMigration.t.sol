@@ -38,8 +38,10 @@ contract Controller_TestMigration is ControllerBaseTest {
 
   function test_WhenWhitelistVault() external {
     MockContract mockTokenVault2 = new MockContract();
+    assertEq(controller.registeredVaults(address(mockTokenVault2)), false);
     vm.expectEmit(true, true, true, true);
     emit SetVault(address(mockTokenVault2));
     controller.whitelistVault(address(mockTokenVault2));
+    assertEq(controller.registeredVaults(address(mockTokenVault2)), true);
   }
 }

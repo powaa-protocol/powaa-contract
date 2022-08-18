@@ -10,9 +10,9 @@
     "build:foundry-ffi": "tsc -p tsconfig.foundry-ffi.json",
     "build": "tsc -p tsconfig.cjs.json; yarn copy-dts-typechain",
     "remove:sol-log": "hardhat remove-logs",
-    "test": "yarn test:py; yarn test:hardhat; yarn test:foundry",
-    "test:hardhat": "hardhat test",
-    "test:foundry": "yarn test:foundry:unit; yarn test:foundry:integration;",
+    "test": "yarn test:foundry",
+    "test:foundry:unit": "forge test --ffi -vvv;",
+    "test:foundry": "yarn test:foundry:unit",
     "compile": "rm -rf artifacts/ typechain/ compiled-typechain/ out/; yarn hardhat typechain --config hardhat.config.ts; forge build"
   },
   "license": "BUSL-1.1",

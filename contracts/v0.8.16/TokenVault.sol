@@ -50,6 +50,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   uint256 public campaignStartBlock;
   uint256 public campaignEndBlock;
   uint256 public reserve;
+  uint24 public feePool; // applicable only for token vault (gov lp vault doesn't have a feepool)
 
   IMigrator public migrator;
   address public controller;
@@ -61,7 +62,11 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   event RewardPaid(address indexed user, uint256 reward);
   event RewardsDurationUpdated(uint256 newDuration);
   event Recovered(address token, uint256 amount);
-  event SetMigrationOption(IMigrator migrator, uint256 campaignEndBlock);
+  event SetMigrationOption(
+    IMigrator migrator,
+    uint256 campaignEndBlock,
+    uint24 feePool
+  );
   event Migrate(uint256 stakingTokenAmount, uint256 vaultETHAmount);
   event ClaimETH(address indexed user, uint256 ethAmount);
 
@@ -212,14 +217,16 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     rewardsDistribution = _rewardsDistribution;
   }
 
-  function setMigrationOption(IMigrator _migrator, uint256 _campaignEndBlock)
-    external
-    onlyOwner
-  {
+  function setMigrationOption(
+    IMigrator _migrator,
+    uint256 _campaignEndBlock,
+    uint24 _feePool
+  ) external onlyOwner {
     migrator = _migrator;
     campaignEndBlock = _campaignEndBlock;
+    feePool = _feePool;
 
-    emit SetMigrationOption(_migrator, _campaignEndBlock);
+    emit SetMigrationOption(_migrator, _campaignEndBlock, _feePool);
   }
 
   /* ========== MUTATIVE FUNCTIONS ========== */
@@ -230,9 +237,12 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     }
 
     isMigrated = true;
+    bytes memory data = isGovLpVault
+      ? abi.encode(address(stakingToken))
+      : abi.encode(address(rewardsToken), feePool);
 
     stakingToken.safeTransfer(address(migrator), _totalSupply);
-    migrator.execute(abi.encode(address(stakingToken)));
+    migrator.execute(data);
 
     ethSupply = address(this).balance;
 

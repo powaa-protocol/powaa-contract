@@ -49,13 +49,13 @@ contract KinkFeeModel is IFeeModel {
     uint256 _currentBlock,
     uint256 _endBlock
   ) private pure returns (uint256) {
-    if (_startBlock == 0 || _startBlock <= _currentBlock) {
+    if (_startBlock == 0) {
       return 0;
     }
 
     uint256 passedBlock = _currentBlock - _startBlock;
 
-    return passedBlock.divWadDown(_endBlock);
+    return passedBlock.divWadDown(_endBlock - _startBlock);
   }
 
   function getFeeRate(

@@ -18,14 +18,14 @@ contract ChainlinkPriceOracle_TestPrice is ChainlinkPriceOracleBase {
     address[] memory token1s = new address[](1);
     token1s[0] = USD_ADDRESS;
 
-    AggregatorV3Interface[][] memory allsoruces = new AggregatorV3Interface[][](
+    AggregatorV3Interface[][] memory allSources = new AggregatorV3Interface[][](
       1
     );
     AggregatorV3Interface[] memory sources = new AggregatorV3Interface[](1);
     sources[0] = AggregatorV3Interface(USDC_USD_ADDRESS);
-    allsoruces[0] = sources;
+    allSources[0] = sources;
 
-    chainlinkPriceOracle.setPriceFeeds(token0s, token1s, allsoruces);
+    chainlinkPriceOracle.setPriceFeeds(token0s, token1s, allSources);
 
     (uint256 priceToken0, uint256 lastedUpdate) = chainlinkPriceOracle.getPrice(
       USDC_ADDRESS,
@@ -55,16 +55,60 @@ contract ChainlinkPriceOracle_TestPrice is ChainlinkPriceOracleBase {
     address[] memory token1s = new address[](1);
     token1s[0] = USD_ADDRESS;
 
-    AggregatorV3Interface[][] memory allsoruces = new AggregatorV3Interface[][](
+    AggregatorV3Interface[][] memory allSources = new AggregatorV3Interface[][](
       1
     );
     AggregatorV3Interface[] memory sources = new AggregatorV3Interface[](1);
     sources[0] = AggregatorV3Interface(USDC_USD_ADDRESS);
-    allsoruces[0] = sources;
+    allSources[0] = sources;
 
     vm.expectRevert(
       abi.encodeWithSignature("ChainlinkPriceOracle_InconsistentLength()")
     );
-    chainlinkPriceOracle.setPriceFeeds(token0s, token1s, allsoruces);
+    chainlinkPriceOracle.setPriceFeeds(token0s, token1s, allSources);
+  }
+
+  function test_WhenSetPriceFeedSourceExistedPair_shouldFail() external {
+    address[] memory token0s = new address[](1);
+    token0s[0] = USDC_ADDRESS;
+
+    address[] memory token1s = new address[](1);
+    token1s[0] = USD_ADDRESS;
+
+    AggregatorV3Interface[][] memory allSources = new AggregatorV3Interface[][](
+      1
+    );
+    AggregatorV3Interface[] memory sources = new AggregatorV3Interface[](1);
+    sources[0] = AggregatorV3Interface(USDC_USD_ADDRESS);
+    allSources[0] = sources;
+
+    chainlinkPriceOracle.setPriceFeeds(token0s, token1s, allSources);
+
+    vm.expectRevert(
+      abi.encodeWithSignature("ChainlinkPriceOracle_SourceExistedPair()")
+    );
+    chainlinkPriceOracle.setPriceFeeds(token1s, token0s, allSources);
+  }
+
+  function test_WhenSetPriceFeedSourceOverLimit_shouldFail() external {
+    address[] memory token0s = new address[](1);
+    token0s[0] = USDC_ADDRESS;
+
+    address[] memory token1s = new address[](1);
+    token1s[0] = USD_ADDRESS;
+
+    AggregatorV3Interface[][] memory allSources = new AggregatorV3Interface[][](
+      1
+    );
+    AggregatorV3Interface[] memory sources = new AggregatorV3Interface[](3);
+    sources[0] = AggregatorV3Interface(USDC_USD_ADDRESS);
+    sources[1] = AggregatorV3Interface(USDC_USD_ADDRESS);
+    sources[2] = AggregatorV3Interface(USDC_USD_ADDRESS);
+    allSources[0] = sources;
+
+    vm.expectRevert(
+      abi.encodeWithSignature("ChainlinkPriceOracle_SourceOverLimit()")
+    );
+    chainlinkPriceOracle.setPriceFeeds(token0s, token1s, allSources);
   }
 }

@@ -13,7 +13,6 @@ contract ChainlinkPriceOracle is OwnableUpgradeable, IPriceOracle {
   /// Errors
   /// ---------------------------------------------------
   error ChainlinkPriceOracle_InconsistentLength();
-  error ChainlinkPriceOracle_InvalidPrice();
   error ChainlinkPriceOracle_NoSource();
   error ChainlinkPriceOracle_SourceExistedPair();
   error ChainlinkPriceOracle_SourceOverLimit();

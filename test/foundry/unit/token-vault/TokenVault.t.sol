@@ -30,8 +30,6 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   }
 
   function _simulateStake(address _user, uint256 _amount) internal {
-    fixture.fakeStakingToken.mint(_user, _amount);
-
     vm.startPrank(_user);
     fixture.fakeStakingToken.approve(address(fixture.tokenVault), _amount);
 
@@ -79,8 +77,9 @@ contract TokenVault_Test is BaseTokenVaultFixture {
       0,
       fixture.fakeStakingToken.balanceOf(address(fixture.tokenVault))
     );
-    assertEq(0, fixture.fakeStakingToken.totalSupply());
+    assertEq(0, fixture.tokenVault.totalSupply());
 
+    fixture.fakeStakingToken.mint(ALICE, STAKE_AMOUNT_1000);
     _simulateStake(ALICE, STAKE_AMOUNT_1000);
 
     assertEq(
@@ -124,6 +123,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   }
 
   function testWithdraw_successfully() external {
+    fixture.fakeStakingToken.mint(ALICE, STAKE_AMOUNT_1000);
     _simulateStake(ALICE, STAKE_AMOUNT_1000);
 
     assertEq(
@@ -144,7 +144,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     assertEq(0, fixture.tokenVault.totalSupply());
   }
 
-  function testWithdraw_whenStakeWithZeroAmount() external {
+  function testWithdraw_whenWithdrawWithZeroAmount() external {
     fixture.fakeStakingToken.mint(address(ALICE), STAKE_AMOUNT_1000);
 
     vm.startPrank(ALICE);
@@ -157,8 +157,6 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   }
 
   function testClaimGov_successfully() external {
-    vm.warp(1000);
-
     vm.expectEmit(true, true, true, true);
     emit RewardsDurationUpdated(10000 ether);
     fixture.tokenVault.setRewardsDuration(10000 ether);
@@ -168,6 +166,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     emit RewardAdded(10000 ether);
     fixture.tokenVault.notifyRewardAmount(10000 ether);
 
+    fixture.fakeStakingToken.mint(ALICE, STAKE_AMOUNT_1000);
     _simulateStake(ALICE, STAKE_AMOUNT_1000);
 
     assertEq(STAKE_AMOUNT_1000, fixture.tokenVault.totalSupply());
@@ -205,8 +204,6 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   }
 
   function testClaimGov_whenThereAreNoRewardToClaim() external {
-    vm.warp(1000);
-
     vm.expectEmit(true, true, true, true);
     emit RewardsDurationUpdated(10000 ether);
     fixture.tokenVault.setRewardsDuration(10000 ether);
@@ -227,8 +224,6 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   }
 
   function testExit_successfully() external {
-    vm.warp(1000);
-
     vm.expectEmit(true, true, true, true);
     emit RewardsDurationUpdated(10000 ether);
     fixture.tokenVault.setRewardsDuration(10000 ether);
@@ -238,6 +233,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     emit RewardAdded(10000 ether);
     fixture.tokenVault.notifyRewardAmount(10000 ether);
 
+    fixture.fakeStakingToken.mint(ALICE, STAKE_AMOUNT_1000);
     _simulateStake(ALICE, STAKE_AMOUNT_1000);
 
     assertEq(STAKE_AMOUNT_1000, fixture.tokenVault.totalSupply());
@@ -277,10 +273,10 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   }
 
   function testMigrate_successfully() external {
-    vm.warp(1000);
-
     // users staking period
+    fixture.fakeStakingToken.mint(ALICE, 500 ether);
     _simulateStake(ALICE, 500 ether);
+    fixture.fakeStakingToken.mint(BOB, 1500 ether);
     _simulateStake(BOB, 1500 ether);
     assertEq(2000 ether, fixture.tokenVault.totalSupply());
 
@@ -315,7 +311,9 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   }
 
   function testClaimETH_successfully() external {
+    fixture.fakeStakingToken.mint(ALICE, 500 ether);
     _simulateStake(ALICE, 500 ether);
+    fixture.fakeStakingToken.mint(BOB, 1500 ether);
     _simulateStake(BOB, 1500 ether);
     _simulateMigrate(10000 ether, 10000 ether, 10000, 0, 1 ether);
 

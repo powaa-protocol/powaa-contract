@@ -272,7 +272,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     assertEq(1000 ether, fixture.fakeStakingToken.balanceOf(ALICE));
   }
 
-  function testMigrate_whenParamsAreProperlySettedUp() external {
+  function testMigrate_whenParamsAreProperlySetUp() external {
     // users staking period
     fixture.fakeStakingToken.mint(ALICE, 500 ether);
     _simulateStake(ALICE, 500 ether);

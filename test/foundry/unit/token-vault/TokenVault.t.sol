@@ -106,19 +106,19 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   }
 
   function testNotifyRewardAmount_whenCallBeforeRewardPeriodStart() external {
-    fixture.tokenVault.setRewardsDuration(100000000);
+    fixture.tokenVault.setRewardsDuration(1 ether);
 
     vm.expectEmit(true, true, true, true);
     emit RewardAdded(10 ether);
     vm.prank(fixture.rewardDistributor);
     fixture.tokenVault.notifyRewardAmount(10 ether);
 
-    // 10e18 / 100000000
-    assertEq(100000000000, fixture.tokenVault.rewardRate());
+    // 10e18 / 1e18
+    assertEq(10, fixture.tokenVault.rewardRate());
     assertEq(uint256(block.timestamp), fixture.tokenVault.lastUpdateTime());
     assertEq(uint256(block.number), fixture.tokenVault.campaignStartBlock());
     assertEq(
-      uint256(block.timestamp).add(100000000),
+      uint256(block.timestamp).add(1 ether),
       fixture.tokenVault.periodFinish()
     );
   }
@@ -136,20 +136,23 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   }
 
   function testNotifyRewardAmount_whenCallDuringRewardPeriod() external {
-    fixture.tokenVault.setRewardsDuration(100000000);
+    fixture.tokenVault.setRewardsDuration(1 ether);
 
     vm.expectEmit(true, true, true, true);
     emit RewardAdded(10 ether);
     vm.prank(fixture.rewardDistributor);
     fixture.tokenVault.notifyRewardAmount(10 ether);
 
-    // 10e18 / 100000000
-    assertEq(100000000000, fixture.tokenVault.rewardRate());
+    // 10e18 / 1e18
+    assertEq(10, fixture.tokenVault.rewardRate());
     assertEq(1, fixture.tokenVault.lastUpdateTime());
     assertEq(1, fixture.tokenVault.campaignStartBlock());
-    assertEq(100000001, fixture.tokenVault.periodFinish());
+    assertEq(
+      uint256(block.timestamp).add(1 ether),
+      fixture.tokenVault.periodFinish()
+    );
 
-    vm.warp(50000000);
+    vm.warp((0.5 ether));
     vm.roll(10000);
 
     vm.expectEmit(true, true, true, true);
@@ -157,11 +160,11 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     vm.prank(fixture.rewardDistributor);
     fixture.tokenVault.notifyRewardAmount(10 ether);
 
-    // (10 ether + ((100000001 - 50000000) * 100000000000)) / 100000000
-    assertEq(150000001000, fixture.tokenVault.rewardRate());
-    assertEq(50000000, fixture.tokenVault.lastUpdateTime());
+    // (10e18 + (((1e18 + 1) - 0.5e18) * 10)) / 1e18
+    assertEq(15, fixture.tokenVault.rewardRate());
+    assertEq(0.5 ether, fixture.tokenVault.lastUpdateTime());
     assertEq(10000, fixture.tokenVault.campaignStartBlock());
-    assertEq(150000000, fixture.tokenVault.periodFinish());
+    assertEq(1.5 ether, fixture.tokenVault.periodFinish());
   }
 
   function testRewardPerToken_whenTotalSupplyIsZero() external {
@@ -315,8 +318,8 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
   function testClaimGov_whenUserRewardIsAvailableAndUnclaimed() external {
     vm.expectEmit(true, true, true, true);
-    emit RewardsDurationUpdated(100000000);
-    fixture.tokenVault.setRewardsDuration(100000000);
+    emit RewardsDurationUpdated(1 ether);
+    fixture.tokenVault.setRewardsDuration(1 ether);
 
     vm.prank(fixture.rewardDistributor);
     vm.expectEmit(true, true, true, true);
@@ -330,26 +333,26 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     vm.warp(5001);
 
-    // 10e18 / 100000000
-    assertEq(100000000000, fixture.tokenVault.rewardRate());
+    // 10e18 / 1e18
+    assertEq(10, fixture.tokenVault.rewardRate());
 
-    // (5001 - 1) * 100000000000 * 1e18 / 1000e18
-    assertEq(uint256(5 * 10**11), fixture.tokenVault.rewardPerToken());
+    // (5001 - 1) * 10 * 1e18 / 1000e18
+    assertEq(50, fixture.tokenVault.rewardPerToken());
 
     vm.expectEmit(true, true, true, true);
-    emit RewardPaid(address(ALICE), uint256(5 * 10**14));
+    emit RewardPaid(address(ALICE), uint256(50000));
 
     vm.prank(ALICE);
     fixture.tokenVault.claimGov();
 
-    assertEq(uint256(5 * 10**14), fixture.fakeRewardToken.balanceOf(ALICE));
+    assertEq(uint256(50000), fixture.fakeRewardToken.balanceOf(ALICE));
     assertEq(0, fixture.tokenVault.rewards(ALICE));
   }
 
   function testClaimGov_whenThereAreNoRewardToClaim() external {
     vm.expectEmit(true, true, true, true);
-    emit RewardsDurationUpdated(100000000);
-    fixture.tokenVault.setRewardsDuration(100000000);
+    emit RewardsDurationUpdated(1 ether);
+    fixture.tokenVault.setRewardsDuration(1 ether);
 
     vm.prank(fixture.rewardDistributor);
     vm.expectEmit(true, true, true, true);
@@ -368,8 +371,8 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
   function testExit_whenUserStakedAndAvailableRewardUnclaimed() external {
     vm.expectEmit(true, true, true, true);
-    emit RewardsDurationUpdated(100000000);
-    fixture.tokenVault.setRewardsDuration(100000000);
+    emit RewardsDurationUpdated(1 ether);
+    fixture.tokenVault.setRewardsDuration(1 ether);
 
     vm.prank(fixture.rewardDistributor);
     vm.expectEmit(true, true, true, true);
@@ -383,19 +386,19 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     vm.warp(5001);
 
-    // 10e18 / 100000000
-    assertEq(100000000000, fixture.tokenVault.rewardRate());
+    // 10e18 / 1e18
+    assertEq(10, fixture.tokenVault.rewardRate());
 
-    // (5001 - 1) * 100000000000 * 1e18 / 1000e18
-    assertEq(uint256(5 * 10**11), fixture.tokenVault.rewardPerToken());
+    // (5001 - 1) * 10 * 1e18 / 1000e18
+    assertEq(uint256(50), fixture.tokenVault.rewardPerToken());
 
     vm.expectEmit(true, true, true, true);
-    emit RewardPaid(address(ALICE), uint256(5 * 10**14));
+    emit RewardPaid(address(ALICE), uint256(50000));
 
     vm.prank(ALICE);
     fixture.tokenVault.exit();
 
-    assertEq(uint256(5 * 10**14), fixture.fakeRewardToken.balanceOf(ALICE));
+    assertEq(uint256(50000), fixture.fakeRewardToken.balanceOf(ALICE));
     assertEq(0, fixture.tokenVault.rewards(ALICE));
 
     assertEq(1000 ether, fixture.fakeStakingToken.balanceOf(ALICE));

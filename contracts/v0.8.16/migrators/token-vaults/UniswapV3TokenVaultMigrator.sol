@@ -14,7 +14,7 @@ import "../../../../lib/solmate/src/utils/FixedPointMathLib.sol";
 import "../../interfaces/IMigrator.sol";
 import "../../interfaces/IWETH9.sol";
 
-contract UniswapV2TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
+contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeTransferLib for address;
   using FixedPointMathLib for uint256;
   using SafeERC20 for IERC20;

@@ -13,7 +13,7 @@ abstract contract POWAABase is BaseTest {
 
   /// @dev Foundry's setUp method
   function setUp() public virtual {
-    POWAAToken = _setupPOWAAToken(100 * 10**18);
+    POWAAToken = _setupPOWAAToken(100 ether);
   }
 
   function _setupPOWAAToken(uint256 _maxTotalSupply) internal returns (POWAA) {

@@ -19,7 +19,7 @@ contract POWAAToken_Test is POWAABase {
     assertEq(POWAAToken.name(), "POWAA token");
     assertEq(POWAAToken.decimals(), 18);
     assertEq(POWAAToken.totalSupply(), 0);
-    assertEq(POWAAToken.maxTotalSupply(), 100 * 10**18);
+    assertEq(POWAAToken.maxTotalSupply(), 100 ether);
   }
 
   function test_Mint_WhenCallerIsNotOwner() external {
@@ -27,12 +27,12 @@ contract POWAAToken_Test is POWAABase {
 
     // assertions
     vm.expectRevert(abi.encodePacked("Ownable: caller is not the owner"));
-    POWAAToken.mint(ALICE, 1 * 10**18);
+    POWAAToken.mint(ALICE, 1 ether);
   }
 
   function test_Mint_WhenExceedMaxTotalSupply() external {
     address owner = address(this);
-    uint256 mintAmount = 101 * 10**18;
+    uint256 mintAmount = 101 ether;
 
     // assertions
     vm.expectRevert(abi.encodeWithSignature("POWAA_MaxTotalSupplyExceeded()"));
@@ -41,7 +41,7 @@ contract POWAAToken_Test is POWAABase {
 
   function test_Mint() external {
     address owner = address(this);
-    uint256 mintAmount = 1 * 10**18;
+    uint256 mintAmount = 1 ether;
 
     // assertions
     POWAAToken.mint(owner, mintAmount);
@@ -53,7 +53,7 @@ contract POWAAToken_Test is POWAABase {
     address owner = address(this);
 
     // mint 10e18 #1
-    uint256 mintAmount = 10 * 10**18;
+    uint256 mintAmount = 10 ether;
     POWAAToken.mint(owner, mintAmount);
     // assertions
     assertEq(POWAAToken.balanceOf(owner), mintAmount);
@@ -76,10 +76,10 @@ contract POWAAToken_Test is POWAABase {
     address owner = address(this);
 
     // OWNER mint 100e18
-    uint256 mintAmount = 100 * 10**18;
+    uint256 mintAmount = 100 ether;
     POWAAToken.mint(owner, mintAmount);
     // transfer 101e18 to ALICE
-    uint256 transferAmount = 101 * 10**18;
+    uint256 transferAmount = 101 ether;
 
     // assertions
     vm.expectRevert(abi.encodePacked("ERC20: transfer amount exceeds balance"));
@@ -90,10 +90,10 @@ contract POWAAToken_Test is POWAABase {
     address owner = address(this);
 
     // OWNER mint 100e18
-    uint256 mintAmount = 100 * 10**18;
+    uint256 mintAmount = 100 ether;
     POWAAToken.mint(owner, mintAmount);
     // transfer 101e18 to address(0)
-    uint256 transferAmount = 5 * 10**18;
+    uint256 transferAmount = 5 ether;
 
     // assertions
     vm.expectRevert(abi.encodePacked("ERC20: transfer to the zero address"));
@@ -104,27 +104,27 @@ contract POWAAToken_Test is POWAABase {
     address owner = address(this);
 
     // OWNER mint 100e18
-    uint256 mintAmount = 100 * 10**18;
+    uint256 mintAmount = 100 ether;
     POWAAToken.mint(owner, mintAmount);
     // transfer 5e18 to ALICE
-    uint256 transferAmount = 5 * 10**18;
+    uint256 transferAmount = 5 ether;
     POWAAToken.transfer(ALICE, transferAmount);
 
     // assertions
-    assertEq(POWAAToken.balanceOf(owner), 95 * 10**18);
-    assertEq(POWAAToken.balanceOf(owner), 95 * 10**18);
-    assertEq(POWAAToken.balanceOf(ALICE), 5 * 10**18);
+    assertEq(POWAAToken.balanceOf(owner), 95 ether);
+    assertEq(POWAAToken.balanceOf(owner), 95 ether);
+    assertEq(POWAAToken.balanceOf(ALICE), 5 ether);
   }
 
   function test_TransferFrom_WhenNotEnoughAllowance() external {
     address owner = address(this);
 
     // OWNER mint 100e18
-    uint256 mintAmount = 100 * 10**18;
+    uint256 mintAmount = 100 ether;
     POWAAToken.mint(owner, mintAmount);
     // transferFrom 5e18 from OWNER to ALICE
     vm.prank(ALICE);
-    uint256 transferAmount = 5 * 10**18;
+    uint256 transferAmount = 5 ether;
 
     // assertions
     vm.expectRevert(abi.encodePacked("ERC20: insufficient allowance"));
@@ -135,12 +135,12 @@ contract POWAAToken_Test is POWAABase {
     address owner = address(this);
 
     // OWNER mint 100e18
-    uint256 mintAmount = 100 * 10**18;
+    uint256 mintAmount = 100 ether;
     POWAAToken.mint(owner, mintAmount);
     // set allowance for ALICE
-    uint256 allowanceAmount = 500 * 10**18;
+    uint256 allowanceAmount = 500 ether;
     POWAAToken.increaseAllowance(ALICE, allowanceAmount);
-    uint256 transferAmount = 101 * 10**18;
+    uint256 transferAmount = 101 ether;
 
     // assertions
     vm.expectRevert(abi.encodePacked("ERC20: transfer amount exceeds balance"));
@@ -151,10 +151,10 @@ contract POWAAToken_Test is POWAABase {
     address owner = address(this);
 
     // OWNER mint 100e18
-    uint256 mintAmount = 100 * 10**18;
+    uint256 mintAmount = 100 ether;
     POWAAToken.mint(owner, mintAmount);
     // set allowance for ALICE
-    uint256 allowanceAmount = 40 * 10**18;
+    uint256 allowanceAmount = 40 ether;
     POWAAToken.increaseAllowance(ALICE, allowanceAmount);
 
     // assertions
@@ -162,12 +162,12 @@ contract POWAAToken_Test is POWAABase {
 
     // transferFrom owner to ALICE
     vm.prank(ALICE);
-    uint256 transferAmount = 30 * 10**18;
+    uint256 transferAmount = 30 ether;
     POWAAToken.transferFrom(owner, ALICE, transferAmount);
 
     // assertions
-    assertEq(POWAAToken.balanceOf(owner), 70 * 10**18);
-    assertEq(POWAAToken.balanceOf(ALICE), 30 * 10**18);
+    assertEq(POWAAToken.balanceOf(owner), 70 ether);
+    assertEq(POWAAToken.balanceOf(ALICE), 30 ether);
     assertEq(
       POWAAToken.allowance(owner, ALICE),
       allowanceAmount - transferAmount

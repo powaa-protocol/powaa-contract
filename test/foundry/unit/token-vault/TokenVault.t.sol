@@ -84,7 +84,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   }
 
   function testSetRewardsDuration_whenCallWithUnauthorizedAccount() external {
-    vm.expectRevert(abi.encodePacked("Ownable: caller is not the owner"));
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_NotController()"));
 
     vm.prank(ALICE);
     fixture.tokenVault.setRewardsDuration(100000000);

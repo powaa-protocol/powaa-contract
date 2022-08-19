@@ -55,12 +55,14 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     IFeeModel _withdrawalFeeModel,
     bool _isGovLpVault
   ) internal returns (TokenVault) {
-    TokenVault _impl = new TokenVault(
+    TokenVault _impl = new TokenVault();
+
+    _impl.initialize(
       _rewardsDistribution,
       _rewardsToken,
       _stakingToken,
       _controller,
-      _withdrawalFeeModel,
+      address(_withdrawalFeeModel),
       _isGovLpVault
     );
 

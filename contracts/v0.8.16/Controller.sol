@@ -97,16 +97,14 @@ contract Controller is Ownable {
 
   function migrate() external onlyOwner {
     if (tokenVaults.length == 0) revert Controller_NoVaults();
+    if (govLPVault == address(0)) revert Controller_NoGovLPVault();
+
     uint256 vaultLength = tokenVaults.length;
     address[] memory _vaults = new address[](vaultLength + 1);
 
     for (uint256 index = 0; index < vaultLength; index++) {
       _vaults[index] = tokenVaults[index];
       ITokenVault(tokenVaults[index]).migrate();
-    }
-
-    if (govLPVault == address(0)) {
-      revert Controller_NoGovLPVault();
     }
 
     _vaults[vaultLength] = govLPVault;

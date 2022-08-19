@@ -21,6 +21,9 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
 
+  /* ========== CLONE's MASTER CONTRACT ========== */
+  TokenVault public immutable masterContract;
+
   /* ========== CONSTANT ========== */
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
@@ -83,20 +86,25 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   error TokenVault_NotController();
   error TokenVault_LpTokenAddressInvalid();
 
-  /* ========== CONSTRUCTOR ========== */
-  constructor(
+  /* ========== MASTER CONTRACT INITIALIZE ========== */
+  constructor() {
+    masterContract = this;
+  }
+
+  /* ========== CLONE INITIALIZE ========== */
+  function initialize(
     address _rewardsDistribution,
     address _rewardsToken,
     address _stakingToken,
     address _controller,
-    IFeeModel _withdrawalFeeModel,
+    address _withdrawalFeeModel,
     bool _isGovLpVault
-  ) {
+  ) public {
     rewardsToken = _rewardsToken;
     stakingToken = IERC20(_stakingToken);
     rewardsDistribution = _rewardsDistribution;
     controller = _controller;
-    withdrawalFeeModel = _withdrawalFeeModel;
+    withdrawalFeeModel = IFeeModel(_withdrawalFeeModel);
     isGovLpVault = _isGovLpVault;
 
     if (!isGovLpVault) return;
@@ -155,6 +163,14 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     _;
   }
 
+  // since this is more likely to be a clone, this is for checking if msg.sender is an owner of a master contract (a.k.a impl contract)
+  modifier onlyMasterContractOwner() {
+    if (msg.sender != masterContract.owner()) {
+      revert TokenVault_NotController();
+    }
+    _;
+  }
+
   /* ========== VIEWS ========== */
 
   function totalSupply() external view returns (uint256) {
@@ -167,6 +183,10 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
 
   function lastTimeRewardApplicable() public view returns (uint256) {
     return block.timestamp < periodFinish ? block.timestamp : periodFinish;
+  }
+
+  function masterContractOwner() external view returns (address) {
+    return masterContract.owner();
   }
 
   function rewardPerToken() public view returns (uint256) {
@@ -196,7 +216,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   }
 
   /* ========== ADMIN FUNCTIONS ========== */
-  function setPaused(bool _paused) external onlyOwner {
+  function setPaused(bool _paused) external onlyMasterContractOwner {
     // Ensure we're actually changing the state before we do anything
     if (_paused == paused()) {
       return;
@@ -212,7 +232,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
 
   function setRewardsDistribution(address _rewardsDistribution)
     external
-    onlyOwner
+    onlyMasterContractOwner
   {
     rewardsDistribution = _rewardsDistribution;
   }
@@ -221,7 +241,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     IMigrator _migrator,
     uint256 _campaignEndBlock,
     uint24 _feePool
-  ) external onlyOwner {
+  ) external onlyMasterContractOwner {
     migrator = _migrator;
     campaignEndBlock = _campaignEndBlock;
     feePool = _feePool;
@@ -289,22 +309,14 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     if (_amount <= 0) revert TokenVault_CannotWithdrawZeroAmount();
 
     // actual withdrawal amount calculation with fee calculation
-    uint256 actualWithdrawalAmount;
-    {
-      if (campaignStartBlock == 0) {
-        // if campaignStartBlock == 0, then no rewards notified yet, hence campaign hasn't started
-        actualWithdrawalAmount = _amount;
-      } else {
-        uint256 feeRate = withdrawalFeeModel.getFeeRate(
-          campaignStartBlock,
-          block.number,
-          campaignEndBlock
-        );
-        uint256 withdrawalFee = feeRate.mulWadDown(_amount);
-        reserve += withdrawalFee;
-        actualWithdrawalAmount = _amount - withdrawalFee;
-      }
-    }
+    uint256 feeRate = withdrawalFeeModel.getFeeRate(
+      campaignStartBlock,
+      block.number,
+      campaignEndBlock
+    );
+    uint256 withdrawalFee = feeRate.mulWadDown(_amount);
+    reserve += withdrawalFee;
+    uint256 actualWithdrawalAmount = _amount - withdrawalFee;
 
     _totalSupply = _totalSupply.sub(_amount);
     _balances[msg.sender] = _balances[msg.sender].sub(_amount);
@@ -360,7 +372,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   // Added to support recovering LP Rewards from other systems such as BAL to be distributed to holders
   function recoverERC20(address _tokenAddress, uint256 _tokenAmount)
     external
-    onlyOwner
+    onlyMasterContractOwner
   {
     if (_tokenAddress == address(stakingToken))
       revert TokenVault_CannotWithdrawStakingToken();
@@ -370,7 +382,10 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     emit Recovered(_tokenAddress, _tokenAmount);
   }
 
-  function setRewardsDuration(uint256 _rewardsDuration) external onlyOwner {
+  function setRewardsDuration(uint256 _rewardsDuration)
+    external
+    onlyMasterContractOwner
+  {
     if (block.timestamp <= periodFinish) {
       revert TokenVault_RewardPeriodMustBeCompleted();
     }

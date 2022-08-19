@@ -56,6 +56,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   uint24 public feePool; // applicable only for token vault (gov lp vault doesn't have a feepool)
 
   IMigrator public migrator;
+  IMigrator public reserveMigrator; // should be similar to the migrator (with treasury amd gov lp vault fee = 0)
   address public controller;
 
   /* ========== EVENTS ========== */
@@ -67,11 +68,13 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   event Recovered(address token, uint256 amount);
   event SetMigrationOption(
     IMigrator migrator,
+    IMigrator reserveMigrator,
     uint256 campaignEndBlock,
     uint24 feePool
   );
   event Migrate(uint256 stakingTokenAmount, uint256 vaultETHAmount);
   event ClaimETH(address indexed user, uint256 ethAmount);
+  event ReduceReserve(uint256 reserveAmount, uint256 reducedETHAmount);
 
   /* ========== ERRORS ========== */
   error TokenVault_CannotStakeZeroAmount();
@@ -239,14 +242,38 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
 
   function setMigrationOption(
     IMigrator _migrator,
+    IMigrator _reserveMigrator,
     uint256 _campaignEndBlock,
     uint24 _feePool
   ) external onlyMasterContractOwner {
     migrator = _migrator;
+    reserveMigrator = _reserveMigrator;
     campaignEndBlock = _campaignEndBlock;
     feePool = _feePool;
 
-    emit SetMigrationOption(_migrator, _campaignEndBlock, _feePool);
+    emit SetMigrationOption(
+      _migrator,
+      _reserveMigrator,
+      _campaignEndBlock,
+      _feePool
+    );
+  }
+
+  function reduceReserve() external onlyOwner nonReentrant whenNotMigrated {
+    bytes memory data = abi.encode(address(stakingToken), feePool);
+
+    uint256 ethBalanceBefore = address(this).balance;
+    uint256 _reserve = reserve; // SLOAD
+    reserve = 0;
+
+    stakingToken.safeTransfer(address(reserveMigrator), _reserve);
+    reserveMigrator.execute(data);
+
+    uint256 reducedETHAmount = address(this).balance - ethBalanceBefore;
+
+    msg.sender.safeTransferETH(reducedETHAmount);
+
+    emit ReduceReserve(_reserve, reducedETHAmount);
   }
 
   /* ========== MUTATIVE FUNCTIONS ========== */

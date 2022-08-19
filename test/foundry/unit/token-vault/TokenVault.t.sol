@@ -72,10 +72,6 @@ contract TokenVault_Test is BaseTokenVaultFixture {
       address(fixture.fakeStakingToken),
       _exchangeToNativeRate
     );
-    fixture.fakeMigrator.mockSetMigrateRate(
-      address(fixture.fakeRewardToken),
-      _exchangeToNativeRate
-    );
 
     vm.prank(fixture.controller);
     fixture.tokenVault.migrate();
@@ -94,7 +90,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     fixture.tokenVault.setRewardsDuration(10000 ether);
   }
 
-  function testSetRewardsDuration_whenCallBeforeRewardPeriod() external {
+  function testSetRewardsDuration_whenCallDuringRewardPeriod() external {
     fixture.tokenVault.setRewardsDuration(10000 ether);
 
     // reward period will be set to block timestamp 10000e18

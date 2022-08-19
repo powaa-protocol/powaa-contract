@@ -39,7 +39,7 @@ contract LinearFeeModel is IFeeModel {
     uint256 _startBlock,
     uint256 _currentBlock,
     uint256 _endBlock
-  ) public view returns (uint256) {
+  ) external view returns (uint256) {
     uint256 ur = _utilizationRate(_startBlock, _currentBlock, _endBlock);
 
     return ur.mulWadDown(multiplierRate) + baseRate;

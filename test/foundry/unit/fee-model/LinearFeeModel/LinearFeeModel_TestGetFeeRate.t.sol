@@ -18,7 +18,7 @@ contract LinearFeeModel_TestGetFeeRate is LinearFeeModelBaseTest {
     assertEq(feeRate, linearFeeModel.baseRate());
   }
 
-  function test_WhenGetFeeRate_withStartBlockAtZero_withBaseRate50() external {
+  function test_WhenGetFeeRate_withStartBlockAtZeroAndBaseRate50() external {
     linearFeeModel = _setupLinearFeeModel(50, 100);
     uint256 feeRate = linearFeeModel.getFeeRate(0, 1, 2);
 
@@ -37,7 +37,7 @@ contract LinearFeeModel_TestGetFeeRate is LinearFeeModelBaseTest {
     assertEq(feeRate, 25);
   }
 
-  function test_WhenGetFeeRate_withStartBlockAt1_withBaseRate50() external {
+  function test_WhenGetFeeRate_withStartBlockAt1AndBaseRate50() external {
     linearFeeModel = _setupLinearFeeModel(50, 100);
     uint256 feeRate = linearFeeModel.getFeeRate(1, 2, 5);
 
@@ -47,9 +47,7 @@ contract LinearFeeModel_TestGetFeeRate is LinearFeeModelBaseTest {
     assertEq(feeRate, 75);
   }
 
-  function test_WhenGetFeeRate_withStartBlockAt1_withMultiplierRate75()
-    external
-  {
+  function test_WhenGetFeeRate_withStartBlockAt1AndMultiplierRate75() external {
     linearFeeModel = _setupLinearFeeModel(0, 75);
     uint256 feeRate = linearFeeModel.getFeeRate(1, 2, 5);
 
@@ -57,5 +55,27 @@ contract LinearFeeModel_TestGetFeeRate is LinearFeeModelBaseTest {
     // feeRate = baseRate + ( multiplierRate * utilizationRate)
     //         = 0 + ( 75 * 25% ) = 18
     assertEq(feeRate, 18);
+  }
+
+  function test_WhenGetFeeRate_withCurrentBlockAndEndBlockAtSameBlock()
+    external
+  {
+    linearFeeModel = _setupLinearFeeModel(50, 100);
+    uint256 feeRate = linearFeeModel.getFeeRate(1, 5, 5);
+
+    // utilizationRate = 100%
+    // feeRate = baseRate + ( multiplierRate * utilizationRate)
+    //         = 50 + ( 100 * 100% ) = 150
+    assertEq(feeRate, 150);
+  }
+
+  function test_WhenGetFeeRate_withCurrentBlockMoreThanEndBlock() external {
+    linearFeeModel = _setupLinearFeeModel(50, 100);
+    uint256 feeRate = linearFeeModel.getFeeRate(1, 6, 5);
+
+    // utilizationRate = 100%
+    // feeRate = baseRate + ( multiplierRate * utilizationRate)
+    //         = 50 + ( 100 * 100% ) = 150
+    assertEq(feeRate, 150);
   }
 }

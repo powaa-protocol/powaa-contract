@@ -30,6 +30,8 @@ contract LinearFeeModel is IFeeModel {
       return 0;
     }
 
+    if (_currentBlock >= _endBlock) return 1e18;
+
     uint256 passedBlock = _currentBlock - _startBlock;
 
     return passedBlock.divWadDown(_endBlock - _startBlock);

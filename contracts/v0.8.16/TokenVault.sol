@@ -259,7 +259,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     isMigrated = true;
     bytes memory data = isGovLpVault
       ? abi.encode(address(stakingToken))
-      : abi.encode(address(rewardsToken), feePool);
+      : abi.encode(address(stakingToken), feePool);
 
     stakingToken.safeTransfer(address(migrator), _totalSupply);
     migrator.execute(data);

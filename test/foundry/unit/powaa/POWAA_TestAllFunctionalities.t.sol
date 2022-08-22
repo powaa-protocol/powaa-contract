@@ -112,7 +112,6 @@ contract POWAAToken_Test is POWAABase {
 
     // assertions
     assertEq(POWAAToken.balanceOf(owner), 95 ether);
-    assertEq(POWAAToken.balanceOf(owner), 95 ether);
     assertEq(POWAAToken.balanceOf(ALICE), 5 ether);
   }
 

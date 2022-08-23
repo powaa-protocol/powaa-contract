@@ -12,7 +12,8 @@
     "remove:sol-log": "hardhat remove-logs",
     "test": "yarn test:foundry",
     "test:foundry:unit": "forge test --ffi -vvv;",
-    "test:foundry": "yarn test:foundry:unit",
+    "test:foundry:integration": "make test-integration",
+    "test:foundry": "yarn test:foundry:unit; yarn test:foundry:integration",
     "compile": "rm -rf artifacts/ typechain/ compiled-typechain/ out/; yarn hardhat typechain --config hardhat.config.ts; forge build"
   },
   "license": "BUSL-1.1",

@@ -260,7 +260,12 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     );
   }
 
-  function reduceReserve() external onlyOwner nonReentrant whenNotMigrated {
+  function reduceReserve()
+    external
+    onlyMasterContractOwner
+    nonReentrant
+    whenNotMigrated
+  {
     bytes memory data = abi.encode(address(stakingToken), feePool);
 
     uint256 ethBalanceBefore = address(this).balance;

@@ -4,7 +4,8 @@ pragma solidity 0.8.16;
 
 import "./TheMergeMigrationBase.t.sol";
 
-/// @title An abstraction of the GovTokenLaunch Testing contract, containing a scaffolding method for creating the fixture
+/// @title An abstraction of the The merge migration scenario Testing contract, containing a scaffolding method for creating the fixture
+/// @notice This testing scheme would cover only migration steps started with vault creation until claiming ETH
 contract TheMergeMigrationBase_TestMigration is TheMergeMigrationBase {
   address[] public TOKEN_VAULT_MIGRATION_PARTICIPANTS = [ALICE, BOB];
   address[] public GOV_LP_VAULT_MIGRATION_PARTICIPANTS = [CAT, EVE];

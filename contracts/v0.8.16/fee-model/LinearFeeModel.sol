@@ -26,11 +26,13 @@ contract LinearFeeModel is IFeeModel {
     uint256 _currentBlock,
     uint256 _endBlock
   ) private pure returns (uint256) {
-    if (_startBlock == 0 || _currentBlock < _startBlock) {
+    if (
+      _startBlock == 0 ||
+      _currentBlock < _startBlock ||
+      _currentBlock > _endBlock
+    ) {
       return 0;
     }
-
-    if (_currentBlock > _endBlock) return 1e18;
 
     uint256 passedBlock = _currentBlock - _startBlock;
 
@@ -41,7 +43,7 @@ contract LinearFeeModel is IFeeModel {
     uint256 _startBlock,
     uint256 _currentBlock,
     uint256 _endBlock
-  ) public view returns (uint256) {
+  ) external view returns (uint256) {
     uint256 ur = _utilizationRate(_startBlock, _currentBlock, _endBlock);
 
     return ur.mulWadDown(multiplierRate) + baseRate;

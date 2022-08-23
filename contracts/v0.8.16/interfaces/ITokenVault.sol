@@ -3,7 +3,6 @@ pragma solidity 0.8.16;
 
 interface ITokenVault {
   // Views
-
   function balanceOf(address account) external view returns (uint256);
 
   function earned(address account) external view returns (uint256);
@@ -21,6 +20,15 @@ interface ITokenVault {
   function totalSupply() external view returns (uint256);
 
   // Mutative
+
+  function initialize(
+    address _rewardsDistribution,
+    address _rewardsToken,
+    address _stakingToken,
+    address _controller,
+    address _withdrawalFeeModel,
+    bool _isGovLpVault
+  ) external;
 
   function exit() external;
 

@@ -21,6 +21,9 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
 
+  /* ========== CLONE's MASTER CONTRACT ========== */
+  TokenVault public immutable masterContract;
+
   /* ========== CONSTANT ========== */
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
@@ -28,9 +31,9 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   address public rewardsDistribution;
   address public rewardsToken;
   IERC20 public stakingToken;
-  uint256 public periodFinish = 0;
-  uint256 public rewardRate = 0;
-  uint256 public rewardsDuration = 7 days;
+  uint256 public periodFinish;
+  uint256 public rewardRate;
+  uint256 public rewardsDuration;
 
   uint256 public lastUpdateTime;
   uint256 public rewardPerTokenStored;
@@ -53,22 +56,25 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   uint24 public feePool; // applicable only for token vault (gov lp vault doesn't have a feepool)
 
   IMigrator public migrator;
+  IMigrator public reserveMigrator; // should be similar to the migrator (with treasury amd gov lp vault fee = 0)
   address public controller;
 
   /* ========== EVENTS ========== */
   event RewardAdded(uint256 reward);
   event Staked(address indexed user, uint256 amount);
-  event Withdrawn(address indexed user, uint256 amount);
+  event Withdrawn(address indexed user, uint256 amount, uint256 fee);
   event RewardPaid(address indexed user, uint256 reward);
   event RewardsDurationUpdated(uint256 newDuration);
   event Recovered(address token, uint256 amount);
   event SetMigrationOption(
     IMigrator migrator,
+    IMigrator reserveMigrator,
     uint256 campaignEndBlock,
     uint24 feePool
   );
   event Migrate(uint256 stakingTokenAmount, uint256 vaultETHAmount);
   event ClaimETH(address indexed user, uint256 ethAmount);
+  event ReduceReserve(uint256 reserveAmount, uint256 reducedETHAmount);
 
   /* ========== ERRORS ========== */
   error TokenVault_CannotStakeZeroAmount();
@@ -83,21 +89,27 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   error TokenVault_NotController();
   error TokenVault_LpTokenAddressInvalid();
 
-  /* ========== CONSTRUCTOR ========== */
-  constructor(
+  /* ========== MASTER CONTRACT INITIALIZE ========== */
+  constructor() {
+    masterContract = this;
+  }
+
+  /* ========== CLONE INITIALIZE ========== */
+  function initialize(
     address _rewardsDistribution,
     address _rewardsToken,
     address _stakingToken,
     address _controller,
-    IFeeModel _withdrawalFeeModel,
+    address _withdrawalFeeModel,
     bool _isGovLpVault
-  ) {
+  ) public {
     rewardsToken = _rewardsToken;
     stakingToken = IERC20(_stakingToken);
     rewardsDistribution = _rewardsDistribution;
     controller = _controller;
-    withdrawalFeeModel = _withdrawalFeeModel;
+    withdrawalFeeModel = IFeeModel(_withdrawalFeeModel);
     isGovLpVault = _isGovLpVault;
+    rewardsDuration = 7 days; // default 7 days
 
     if (!isGovLpVault) return;
 
@@ -155,6 +167,14 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     _;
   }
 
+  // since this is more likely to be a clone, this is for checking if msg.sender is an owner of a master contract (a.k.a impl contract)
+  modifier onlyMasterContractOwner() {
+    if (msg.sender != masterContract.owner()) {
+      revert TokenVault_NotController();
+    }
+    _;
+  }
+
   /* ========== VIEWS ========== */
 
   function totalSupply() external view returns (uint256) {
@@ -167,6 +187,10 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
 
   function lastTimeRewardApplicable() public view returns (uint256) {
     return block.timestamp < periodFinish ? block.timestamp : periodFinish;
+  }
+
+  function masterContractOwner() external view returns (address) {
+    return masterContract.owner();
   }
 
   function rewardPerToken() public view returns (uint256) {
@@ -196,7 +220,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   }
 
   /* ========== ADMIN FUNCTIONS ========== */
-  function setPaused(bool _paused) external onlyOwner {
+  function setPaused(bool _paused) external onlyMasterContractOwner {
     // Ensure we're actually changing the state before we do anything
     if (_paused == paused()) {
       return;
@@ -212,21 +236,50 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
 
   function setRewardsDistribution(address _rewardsDistribution)
     external
-    onlyOwner
+    onlyMasterContractOwner
   {
     rewardsDistribution = _rewardsDistribution;
   }
 
   function setMigrationOption(
     IMigrator _migrator,
+    IMigrator _reserveMigrator,
     uint256 _campaignEndBlock,
     uint24 _feePool
-  ) external onlyOwner {
+  ) external onlyMasterContractOwner {
     migrator = _migrator;
+    reserveMigrator = _reserveMigrator;
     campaignEndBlock = _campaignEndBlock;
     feePool = _feePool;
 
-    emit SetMigrationOption(_migrator, _campaignEndBlock, _feePool);
+    emit SetMigrationOption(
+      _migrator,
+      _reserveMigrator,
+      _campaignEndBlock,
+      _feePool
+    );
+  }
+
+  function reduceReserve()
+    external
+    onlyMasterContractOwner
+    nonReentrant
+    whenNotMigrated
+  {
+    bytes memory data = abi.encode(address(stakingToken), feePool);
+
+    uint256 ethBalanceBefore = address(this).balance;
+    uint256 _reserve = reserve; // SLOAD
+    reserve = 0;
+
+    stakingToken.safeTransfer(address(reserveMigrator), _reserve);
+    reserveMigrator.execute(data);
+
+    uint256 reducedETHAmount = address(this).balance - ethBalanceBefore;
+
+    msg.sender.safeTransferETH(reducedETHAmount);
+
+    emit ReduceReserve(_reserve, reducedETHAmount);
   }
 
   /* ========== MUTATIVE FUNCTIONS ========== */
@@ -235,11 +288,10 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     if (block.chainid == 1) {
       revert TokenVault_InvalidChainId();
     }
-
     isMigrated = true;
     bytes memory data = isGovLpVault
       ? abi.encode(address(stakingToken))
-      : abi.encode(address(rewardsToken), feePool);
+      : abi.encode(address(stakingToken), feePool);
 
     stakingToken.safeTransfer(address(migrator), _totalSupply);
     migrator.execute(data);
@@ -258,6 +310,8 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     if (claimable == 0) {
       return;
     }
+
+    _balances[msg.sender] = 0;
 
     msg.sender.safeTransferETH(claimable);
 
@@ -289,29 +343,21 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     if (_amount <= 0) revert TokenVault_CannotWithdrawZeroAmount();
 
     // actual withdrawal amount calculation with fee calculation
-    uint256 actualWithdrawalAmount;
-    {
-      if (campaignStartBlock == 0) {
-        // if campaignStartBlock == 0, then no rewards notified yet, hence campaign hasn't started
-        actualWithdrawalAmount = _amount;
-      } else {
-        uint256 feeRate = withdrawalFeeModel.getFeeRate(
-          campaignStartBlock,
-          block.number,
-          campaignEndBlock
-        );
-        uint256 withdrawalFee = feeRate.mulWadDown(_amount);
-        reserve += withdrawalFee;
-        actualWithdrawalAmount = _amount - withdrawalFee;
-      }
-    }
+    uint256 feeRate = withdrawalFeeModel.getFeeRate(
+      campaignStartBlock,
+      block.number,
+      campaignEndBlock
+    );
+    uint256 withdrawalFee = feeRate.mulWadDown(_amount);
+    reserve += withdrawalFee;
+    uint256 actualWithdrawalAmount = _amount - withdrawalFee;
 
     _totalSupply = _totalSupply.sub(_amount);
     _balances[msg.sender] = _balances[msg.sender].sub(_amount);
 
     stakingToken.safeTransfer(msg.sender, actualWithdrawalAmount);
 
-    emit Withdrawn(msg.sender, _amount);
+    emit Withdrawn(msg.sender, actualWithdrawalAmount, withdrawalFee);
   }
 
   function claimGov() public nonReentrant updateReward(msg.sender) {
@@ -360,7 +406,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   // Added to support recovering LP Rewards from other systems such as BAL to be distributed to holders
   function recoverERC20(address _tokenAddress, uint256 _tokenAmount)
     external
-    onlyOwner
+    onlyMasterContractOwner
   {
     if (_tokenAddress == address(stakingToken))
       revert TokenVault_CannotWithdrawStakingToken();
@@ -370,7 +416,10 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     emit Recovered(_tokenAddress, _tokenAmount);
   }
 
-  function setRewardsDuration(uint256 _rewardsDuration) external onlyOwner {
+  function setRewardsDuration(uint256 _rewardsDuration)
+    external
+    onlyMasterContractOwner
+  {
     if (block.timestamp <= periodFinish) {
       revert TokenVault_RewardPeriodMustBeCompleted();
     }

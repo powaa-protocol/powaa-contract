@@ -23,6 +23,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
       rewardDistributor: _fixture.rewardDistributor,
       fakeFeeModel: _fixture.fakeFeeModel,
       fakeMigrator: _fixture.fakeMigrator,
+      fakeReserveMigrator: _fixture.fakeReserveMigrator,
       fakeRewardToken: _fixture.fakeRewardToken,
       fakeStakingToken: _fixture.fakeStakingToken
     });
@@ -64,7 +65,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     fixture.tokenVault.setMigrationOption(
       IMigrator(address(fixture.fakeMigrator)),
-      IMigrator(address(fixture.fakeMigrator)),
+      IMigrator(address(fixture.fakeReserveMigrator)),
       _campaignEndBlock,
       _feePool
     );
@@ -279,16 +280,22 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     );
     assertEq(STAKE_AMOUNT_1000, fixture.tokenVault.totalSupply());
 
+    fixture.fakeFeeModel.mockSetFee(0.02 ether);
+
     vm.expectEmit(true, true, true, true);
-    emit Withdrawn(address(ALICE), STAKE_AMOUNT_1000);
+    emit Withdrawn(address(ALICE), 980 ether, 20 ether);
 
     vm.prank(ALICE);
     fixture.tokenVault.withdraw(STAKE_AMOUNT_1000);
+
+    assertEq(0, fixture.tokenVault.totalSupply());
     assertEq(
-      0,
+      20 ether,
       fixture.fakeStakingToken.balanceOf(address(fixture.tokenVault))
     );
-    assertEq(0, fixture.tokenVault.totalSupply());
+    assertEq(20 ether, fixture.tokenVault.reserve());
+
+    assertEq(980 ether, fixture.fakeStakingToken.balanceOf(address(ALICE)));
   }
 
   function testWithdraw_whenWithdrawWithZeroAmount() external {

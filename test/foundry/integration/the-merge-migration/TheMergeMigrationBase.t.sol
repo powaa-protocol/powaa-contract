@@ -28,7 +28,7 @@ abstract contract TheMergeMigrationBase is BaseTest {
   uint256 public constant GOV_LP_VAULT_FEE_RATE = 0.05 ether; // 5%
 
   // LinearFeeModel Params
-  uint256 public constant BASE_RATE = 0; // 5%
+  uint256 public constant BASE_RATE = 0;
   uint256 public constant MULTIPLIER_RATE = 0.02 ether; // 2% at 100% utilization
 
   // GovLPToken Params

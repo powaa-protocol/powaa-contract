@@ -97,7 +97,7 @@ contract UniswapV3TokenVaultMigrator_Test is
   function testExecute_whenCallWithUnauthorizedAccount() external {
     vm.expectRevert(
       abi.encodeWithSignature(
-        "UniswapV3VaultMigrator_OnlyWhitelistedTokenVault()"
+        "UniswapV3TokenVaultMigrator_OnlyWhitelistedTokenVault()"
       )
     );
 

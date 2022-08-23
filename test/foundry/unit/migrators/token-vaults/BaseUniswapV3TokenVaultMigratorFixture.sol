@@ -24,8 +24,8 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
   );
   event WhitelistTokenVault(address tokenVault, bool whitelisted);
 
-  error UniswapV3VaultMigrator_OnlyWhitelistedTokenVault();
-  error UniswapV3VaultMigrator_InvalidFeeRate();
+  error UniswapV3TokenVaultMigrator_OnlyWhitelistedTokenVault();
+  error UniswapV3TokenVaultMigrator_InvalidFeeRate();
 
   function _setupFakeERC20(string memory _name, string memory _symbol)
     internal
@@ -49,7 +49,7 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
     address _govLPTokenVault,
     uint256 _govLPTokenVaultFeeRate,
     uint256 _treasuryFeeRate,
-    ISwapRouter _router
+    IV3SwapRouter _router
   ) internal returns (UniswapV3TokenVaultMigrator) {
     UniswapV3TokenVaultMigrator _impl = new UniswapV3TokenVaultMigrator(
       _treasury,
@@ -79,7 +79,7 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
       _state.govLPTokenVault,
       uint256(0.1 ether),
       uint256(0.1 ether),
-      ISwapRouter(address(_state.fakeSwapRouter))
+      IV3SwapRouter(address(_state.fakeSwapRouter))
     );
 
     return _state;

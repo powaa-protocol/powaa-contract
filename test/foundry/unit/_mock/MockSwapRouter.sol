@@ -24,7 +24,6 @@ contract MockSwapRouter is MockContract {
     address tokenOut;
     uint24 fee;
     address recipient;
-    uint256 deadline;
     uint256 amountIn;
     uint256 amountOutMinimum;
     uint160 sqrtPriceLimitX96;
@@ -55,7 +54,6 @@ contract MockSwapRouter is MockContract {
   struct ExactInputParams {
     bytes path;
     address recipient;
-    uint256 deadline;
     uint256 amountIn;
     uint256 amountOutMinimum;
   }
@@ -74,7 +72,6 @@ contract MockSwapRouter is MockContract {
     address tokenOut;
     uint24 fee;
     address recipient;
-    uint256 deadline;
     uint256 amountOut;
     uint256 amountInMaximum;
     uint160 sqrtPriceLimitX96;
@@ -92,7 +89,6 @@ contract MockSwapRouter is MockContract {
   struct ExactOutputParams {
     bytes path;
     address recipient;
-    uint256 deadline;
     uint256 amountOut;
     uint256 amountInMaximum;
   }

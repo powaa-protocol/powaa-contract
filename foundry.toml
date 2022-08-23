@@ -1,5 +1,6 @@
 [profile.default]
-src = 'contracts'
-out = 'out'
+gas_reports = ["Controller", "POWAA", "LinearFeeModel", "TokenVault", "UniswapV3TokenVaultMigrator", "UniswapV2GovLPVaultMigrator"]
 libs = ['lib']
+out = 'out'
+src = 'contracts'
 test = 'test/foundry/unit'

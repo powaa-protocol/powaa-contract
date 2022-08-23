@@ -49,7 +49,11 @@ contract KinkFeeModel is IFeeModel {
     uint256 _currentBlock,
     uint256 _endBlock
   ) private pure returns (uint256) {
-    if (_startBlock == 0) {
+    if (
+      _startBlock == 0 ||
+      _currentBlock < _startBlock ||
+      _currentBlock > _endBlock
+    ) {
       return 0;
     }
 

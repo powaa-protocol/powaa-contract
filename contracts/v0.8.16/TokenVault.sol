@@ -279,6 +279,8 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
       return;
     }
 
+    _balances[msg.sender] = 0;
+
     msg.sender.safeTransferETH(claimable);
 
     emit ClaimETH(msg.sender, claimable);

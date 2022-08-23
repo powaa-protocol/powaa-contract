@@ -37,6 +37,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     // we pre-minted plenty of native tokens for the mocked migrator
     // and pretend that it actually does the swapping when we executing migration
     vm.deal(address(fixture.fakeMigrator), MIGRATOR_BALANCE);
+    vm.deal(address(fixture.fakeReserveMigrator), MIGRATOR_BALANCE);
   }
 
   function _simulateStake(address _user, uint256 _amount) internal {
@@ -324,6 +325,54 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     vm.stopPrank();
   }
 
+  function testReduceReserve_afterUserSuccessfullyWithdrawn() external {
+    fixture.fakeStakingToken.mint(ALICE, STAKE_AMOUNT_1000);
+    _simulateStake(ALICE, STAKE_AMOUNT_1000);
+
+    assertEq(
+      STAKE_AMOUNT_1000,
+      fixture.fakeStakingToken.balanceOf(address(fixture.tokenVault))
+    );
+    assertEq(STAKE_AMOUNT_1000, fixture.tokenVault.totalSupply());
+
+    fixture.fakeFeeModel.mockSetFee(0.02 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(address(ALICE), 980 ether, 20 ether);
+
+    vm.prank(ALICE);
+    fixture.tokenVault.withdraw(STAKE_AMOUNT_1000);
+
+    assertEq(20 ether, fixture.tokenVault.reserve());
+
+    fixture.tokenVault.setMigrationOption(
+      IMigrator(address(fixture.fakeMigrator)),
+      IMigrator(address(fixture.fakeReserveMigrator)),
+      0,
+      0
+    );
+    fixture.fakeReserveMigrator.mockSetMigrateRate(
+      address(fixture.fakeStakingToken),
+      1 ether
+    );
+
+    uint256 balanceBefore = address(this).balance;
+
+    vm.expectEmit(true, true, true, true);
+    emit ReduceReserve(20 ether, 20 ether);
+    fixture.tokenVault.reduceReserve();
+
+    assertEq(0 ether, fixture.tokenVault.reserve());
+    assertEq(balanceBefore.add(20 ether), address(this).balance);
+  }
+
+  function testReduceReserve_whenCallingWithUnauthorizedAccount() external {
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_NotController()"));
+
+    vm.prank(ALICE);
+    fixture.tokenVault.reduceReserve();
+  }
+
   function testClaimGov_whenUserRewardIsAvailableAndUnclaimed() external {
     vm.expectEmit(true, true, true, true);
     emit RewardsDurationUpdated(1 ether);
@@ -467,4 +516,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     assertEq(500 ether, ALICE.balance);
     assertEq(1500 ether, BOB.balance);
   }
+
+  /// @dev Fallback function to accept ETH.
+  receive() external payable {}
 }

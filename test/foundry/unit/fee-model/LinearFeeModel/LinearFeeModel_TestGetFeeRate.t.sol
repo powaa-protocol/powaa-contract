@@ -9,45 +9,53 @@ contract LinearFeeModel_TestGetFeeRate is LinearFeeModelBaseTest {
     super.setUp();
   }
 
-  function test_WithBaseRateOf0_WhenStartBlockAtZero() external {
+  function test_WithZeroBaseRate_WhenStartBlockAtZero() external {
+    // Since start block is zero, no multiplier fee returned
     uint256 feeRate = linearFeeModel.getFeeRate(0, 1, 2);
 
-    // utilizationRate = 0%
+    // tilizationRate = 0%
     // feeRate = baseRate + ( multiplierRate * utilizationRate)
     //         = 0 + ( 100 * 0% ) = 0
     assertEq(feeRate, linearFeeModel.baseRate());
+    assertEq(feeRate, 0);
   }
 
-  function test_WithBaseRateOf0_WhenStartBlockAtNoneZero() external {
+  function test_WithZeroBaseRate_WhenStartBlockIsGTZero() external {
     uint256 feeRate = linearFeeModel.getFeeRate(1, 2, 5);
 
-    // utilizationRate = 25%
+    // utilizationRate = 2-1 / 5-1
+    //                 = 0.25
+    //                 = 25%
     // feeRate = baseRate + ( multiplierRate * utilizationRate)
     //         = 0 + ( 100 * 25% ) = 25
     assertEq(feeRate, 25);
   }
 
-  function test_WithBaseRateOf50_WhenStartBlockAtZero() external {
+  function test_WithBaseRateGTZero_WhenStartBlockAtZero() external {
     linearFeeModel = _setupLinearFeeModel(50, 100);
+    // Since start block is zero, no multiplier fee returned
     uint256 feeRate = linearFeeModel.getFeeRate(0, 1, 2);
 
     // utilizationRate = 0%
     // feeRate = baseRate + ( multiplierRate * utilizationRate)
     //         = 50 + ( 100 * 0% ) = 50
     assertEq(feeRate, linearFeeModel.baseRate());
+    assertEq(feeRate, 50);
   }
 
-  function test_WithBaseRateof50_WhenStartBlockAtNoneZero() external {
+  function test_WithBaseRateGTZero_WhenStartBlockAtNoneZero() external {
     linearFeeModel = _setupLinearFeeModel(50, 100);
     uint256 feeRate = linearFeeModel.getFeeRate(1, 2, 5);
 
-    // utilizationRate = 25%
+    // utilizationRate = 2-1 / 5-1
+    //                 = 0.25
+    //                 = 25%
     // feeRate = baseRate + ( multiplierRate * utilizationRate)
     //         = 50 + ( 100 * 25% ) = 75
     assertEq(feeRate, 75);
   }
 
-  function test_WithFuzzyBaseRateAndFuzzyMultiplierRate_WhenCurrentBlockLTStartBlock(
+  function test_WithFuzzyBaseRate_WithFuzzyMultiplierRate_WhenCurrentBlockLTStartBlock(
     uint256 _baseRate,
     uint256 _multiplierRate
   ) external {
@@ -56,10 +64,10 @@ contract LinearFeeModel_TestGetFeeRate is LinearFeeModelBaseTest {
 
     linearFeeModel = _setupLinearFeeModel(_baseRate, _multiplierRate);
     uint256 feeRate = linearFeeModel.getFeeRate(3, 1, 5);
-    assertEq(feeRate, _baseRate + (_multiplierRate * 0));
+    assertEq(feeRate, _baseRate);
   }
 
-  function test_WithFuzzyBaseRateAndFuzzyMultiplierRate_WhenCurrentBlockLTEndBlock(
+  function test_WithFuzzyBaseRate_WithFuzzyMultiplierRate_WhenCurrentBlockLTEndBlock(
     uint256 _baseRate,
     uint256 _multiplierRate
   ) external {
@@ -107,6 +115,6 @@ contract LinearFeeModel_TestGetFeeRate is LinearFeeModelBaseTest {
     linearFeeModel = _setupLinearFeeModel(_baseRate, _multiplierRate);
     uint256 feeRate = linearFeeModel.getFeeRate(1, 6, 5);
 
-    assertEq(feeRate, _baseRate + _multiplierRate);
+    assertEq(feeRate, _baseRate);
   }
 }

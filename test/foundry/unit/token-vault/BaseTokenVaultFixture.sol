@@ -5,20 +5,26 @@ import "../_base/BaseTest.sol";
 import "../_mock/MockERC20.sol";
 import "../_mock/MockMigrator.sol";
 import "../_mock/MockFeeModel.sol";
-import "../../../../../contracts/v0.8.16/TokenVault.sol";
+import "../../../../contracts/v0.8.16/TokenVault.sol";
 
 abstract contract BaseTokenVaultFixture is BaseTest {
   uint256 public constant STAKE_AMOUNT_1000 = 1000 * 1e18;
 
   event RewardAdded(uint256 reward);
   event Staked(address indexed user, uint256 amount);
-  event Withdrawn(address indexed user, uint256 amount);
+  event Withdrawn(address indexed user, uint256 amount, uint256 fee);
   event RewardPaid(address indexed user, uint256 reward);
   event RewardsDurationUpdated(uint256 newDuration);
   event Recovered(address token, uint256 amount);
-  event SetMigrationOption(IMigrator migrator, uint256 campaignEndBlock);
+  event SetMigrationOption(
+    IMigrator migrator,
+    IMigrator reserveMigrator,
+    uint256 campaignEndBlock,
+    uint24 feePool
+  );
   event Migrate(uint256 stakingTokenAmount, uint256 vaultETHAmount);
   event ClaimETH(address indexed user, uint256 ethAmount);
+  event ReduceReserve(uint256 reserveAmount, uint256 reducedETHAmount);
 
   struct TokenVaultTestState {
     TokenVault tokenVault;
@@ -26,6 +32,7 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     address rewardDistributor;
     MockFeeModel fakeFeeModel;
     MockMigrator fakeMigrator;
+    MockMigrator fakeReserveMigrator;
     MockERC20 fakeRewardToken;
     MockERC20 fakeStakingToken;
   }
@@ -78,6 +85,7 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     _state.rewardDistributor = address(123456789);
     _state.fakeFeeModel = new MockFeeModel();
     _state.fakeMigrator = new MockMigrator();
+    _state.fakeReserveMigrator = new MockMigrator();
     _state.fakeRewardToken = _setupFakeERC20("Reward Token", "RT");
     _state.fakeStakingToken = _setupFakeERC20("Staking Token", "ST");
 

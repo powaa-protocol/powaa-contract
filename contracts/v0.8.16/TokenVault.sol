@@ -31,9 +31,9 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   address public rewardsDistribution;
   address public rewardsToken;
   IERC20 public stakingToken;
-  uint256 public periodFinish = 0;
-  uint256 public rewardRate = 0;
-  uint256 public rewardsDuration = 7 days;
+  uint256 public periodFinish;
+  uint256 public rewardRate;
+  uint256 public rewardsDuration;
 
   uint256 public lastUpdateTime;
   uint256 public rewardPerTokenStored;
@@ -62,7 +62,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   /* ========== EVENTS ========== */
   event RewardAdded(uint256 reward);
   event Staked(address indexed user, uint256 amount);
-  event Withdrawn(address indexed user, uint256 amount);
+  event Withdrawn(address indexed user, uint256 amount, uint256 fee);
   event RewardPaid(address indexed user, uint256 reward);
   event RewardsDurationUpdated(uint256 newDuration);
   event Recovered(address token, uint256 amount);
@@ -109,6 +109,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     controller = _controller;
     withdrawalFeeModel = IFeeModel(_withdrawalFeeModel);
     isGovLpVault = _isGovLpVault;
+    rewardsDuration = 7 days; // default 7 days
 
     if (!isGovLpVault) return;
 
@@ -259,7 +260,12 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     );
   }
 
-  function reduceReserve() external onlyOwner nonReentrant whenNotMigrated {
+  function reduceReserve()
+    external
+    onlyMasterContractOwner
+    nonReentrant
+    whenNotMigrated
+  {
     bytes memory data = abi.encode(address(stakingToken), feePool);
 
     uint256 ethBalanceBefore = address(this).balance;
@@ -282,7 +288,6 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     if (block.chainid == 1) {
       revert TokenVault_InvalidChainId();
     }
-
     isMigrated = true;
     bytes memory data = isGovLpVault
       ? abi.encode(address(stakingToken))
@@ -352,7 +357,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
 
     stakingToken.safeTransfer(msg.sender, actualWithdrawalAmount);
 
-    emit Withdrawn(msg.sender, _amount);
+    emit Withdrawn(msg.sender, actualWithdrawalAmount, withdrawalFee);
   }
 
   function claimGov() public nonReentrant updateReward(msg.sender) {

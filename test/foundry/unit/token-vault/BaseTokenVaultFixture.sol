@@ -5,7 +5,7 @@ import "../_base/BaseTest.sol";
 import "../_mock/MockERC20.sol";
 import "../_mock/MockMigrator.sol";
 import "../_mock/MockFeeModel.sol";
-import "../../../../../contracts/v0.8.16/TokenVault.sol";
+import "../../../../contracts/v0.8.16/TokenVault.sol";
 
 abstract contract BaseTokenVaultFixture is BaseTest {
   uint256 public constant STAKE_AMOUNT_1000 = 1000 * 1e18;

@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./BaseTokenVaultFixture.sol";
-import "../../../../../contracts/v0.8.16/TokenVault.sol";
+import "../../../../contracts/v0.8.16/TokenVault.sol";
 
 contract TokenVault_Test is BaseTokenVaultFixture {
   using SafeMath for uint256;
@@ -63,6 +63,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     fixture.tokenVault.notifyRewardAmount(_rewardAmount);
 
     fixture.tokenVault.setMigrationOption(
+      IMigrator(address(fixture.fakeMigrator)),
       IMigrator(address(fixture.fakeMigrator)),
       _campaignEndBlock,
       _feePool

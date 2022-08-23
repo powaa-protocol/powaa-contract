@@ -27,37 +27,37 @@ contract TheMergeMigrationBase_TestMigration is TheMergeMigrationBase {
   function setUp() public override {
     super.setUp();
     // distribute 1000 USDC for each TOKEN_VAULT_MIGRATION_PARTICIPANTS
-    _distributeUSDC(TOKEN_VAULT_MIGRATION_PARTICIPANTS, 1000 * 1e6);
+    _distributeUSDC(TOKEN_VAULT_MIGRATION_PARTICIPANTS, 1000e6);
 
     // build up LP tokens for each GOV_LP_VAULT_MIGRATION_PARTICIPANTS
     _setupGovLPToken(GOV_LP_VAULT_MIGRATION_PARTICIPANTS, 100 ether, 100 ether);
   }
 
-  function test_WithHappyCase() external {
+  function test_WithHappyCase_WithETHPowChain() external {
     // *** Alice and Bob are going to participate in USDC tokenvault
     // *** while Cat and Eve, instead, will participate in GOVLp tokenvault
 
     // Alice Stakes 1000 USDC to the contract
     vm.startPrank(ALICE);
-    USDC.approve(address(usdcTokenVault), 1000 * 1e6);
+    USDC.approve(address(usdcTokenVault), 1000e6);
 
     vm.expectEmit(true, true, true, true);
-    emit Staked(ALICE, 1000 * 1e6);
+    emit Staked(ALICE, 1000e6);
 
-    usdcTokenVault.stake(1000 * 1e6);
-    assertEq(usdcTokenVault.balanceOf(ALICE), 1000 * 1e6);
+    usdcTokenVault.stake(1000e6);
+    assertEq(usdcTokenVault.balanceOf(ALICE), 1000e6);
     vm.stopPrank();
 
     // Bob Stakes 1000 USDC to the contract
     vm.startPrank(BOB);
-    USDC.approve(address(usdcTokenVault), 1000 * 1e6);
+    USDC.approve(address(usdcTokenVault), 1000e6);
 
     vm.expectEmit(true, true, true, true);
-    emit Staked(BOB, 1000 * 1e6);
+    emit Staked(BOB, 1000e6);
 
-    usdcTokenVault.stake(1000 * 1e6);
+    usdcTokenVault.stake(1000e6);
 
-    assertEq(usdcTokenVault.balanceOf(BOB), 1000 * 1e6);
+    assertEq(usdcTokenVault.balanceOf(BOB), 1000e6);
     vm.stopPrank();
 
     // Cat Stakes ALL POWAA-ETH Univswap V2 LP Token to the contract
@@ -102,23 +102,23 @@ contract TheMergeMigrationBase_TestMigration is TheMergeMigrationBase {
     uint256 bobUSDCBefore = USDC.balanceOf(BOB);
 
     vm.expectEmit(true, true, true, true);
-    emit Withdrawn(BOB, 495 * 1e6, 5 * 1e6);
+    emit Withdrawn(BOB, 495e6, 5e6);
 
-    usdcTokenVault.withdraw(500 * 1e6);
+    usdcTokenVault.withdraw(500e6);
     uint256 bobUSDCAfter = USDC.balanceOf(BOB);
     vm.stopPrank();
 
     // States should be updated correcetly
-    assertEq(bobUSDCAfter - bobUSDCBefore, 495 * 1e6);
-    assertEq(usdcTokenVault.balanceOf(BOB), 500 * 1e6);
-    assertEq(usdcTokenVault.reserve(), 5 * 1e6);
+    assertEq(bobUSDCAfter - bobUSDCBefore, 495e6);
+    assertEq(usdcTokenVault.balanceOf(BOB), 500e6);
+    assertEq(usdcTokenVault.reserve(), 5e6);
 
     // Reserve's owner try to reduce reserve so that reserve can be used as a gas
     // 5 USDC can be converted into 2873876295998942 =~ 0.002873876295998942 ETH
     uint256 ownerEthBalanceBefore = address(this).balance;
 
     vm.expectEmit(true, true, true, true);
-    emit ReduceReserve(5 * 1e6, 2873876295998942);
+    emit ReduceReserve(5e6, 2873876295998942);
 
     usdcTokenVault.reduceReserve();
     uint256 ownerEthBalanceAfter = address(this).balance;
@@ -149,7 +149,7 @@ contract TheMergeMigrationBase_TestMigration is TheMergeMigrationBase {
     vm.expectEmit(true, true, true, true);
     emit Execute(775944322229620639, 43108017901645590, 43108017901645590);
     vm.expectEmit(true, true, true, true);
-    emit Migrate(1500 * 1e6, 775944322229620639);
+    emit Migrate(1500e6, 775944322229620639);
     // Migrate GovLP Vault
     vm.expectEmit(true, true, true, true);
     emit Execute(299326793383802621868);
@@ -193,6 +193,10 @@ contract TheMergeMigrationBase_TestMigration is TheMergeMigrationBase {
     assertEq(usdcTokenVault.balanceOf(BOB), 0);
     assertEq(BOB.balance, 258648107409873546);
 
+    // Bob try to withdraw, shouldn't be able to do so
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_AlreadyMigrated()"));
+    usdcTokenVault.withdraw(500e6);
+
     // Bob try to claims her ETH again, shouldn't be able to do so
     usdcTokenVault.claimETH();
     assertEq(BOB.balance, 258648107409873546);
@@ -230,6 +234,167 @@ contract TheMergeMigrationBase_TestMigration is TheMergeMigrationBase {
     // Eve try to claims her ETH again, shouldn't be able to do so
     govLPVault.claimETH();
     assertEq(EVE.balance, 99789967133901422486);
+    vm.stopPrank();
+  }
+
+  function test_WithHappyCase_WithETHPosChain() external {
+    // *** Alice and Bob are going to participate in USDC tokenvault
+    // *** while Cat and Eve, instead, will participate in GOVLp tokenvault
+
+    // Alice Stakes 1000 USDC to the contract
+    vm.startPrank(ALICE);
+    USDC.approve(address(usdcTokenVault), 1000e6);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(ALICE, 1000e6);
+
+    usdcTokenVault.stake(1000e6);
+    assertEq(usdcTokenVault.balanceOf(ALICE), 1000e6);
+    vm.stopPrank();
+
+    // Bob Stakes 1000 USDC to the contract
+    vm.startPrank(BOB);
+    USDC.approve(address(usdcTokenVault), 1000e6);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(BOB, 1000e6);
+
+    usdcTokenVault.stake(1000e6);
+
+    assertEq(usdcTokenVault.balanceOf(BOB), 1000e6);
+    vm.stopPrank();
+
+    // Cat Stakes ALL POWAA-ETH Univswap V2 LP Token to the contract
+    // Cat's current LP balance = 100000e18 * 100e18 / 100000e18 = 100 LP
+    vm.startPrank(CAT);
+    powaaETHUniswapV2LP.approve(address(govLPVault), 100 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(CAT, 100 ether);
+
+    govLPVault.stake(100 ether);
+
+    assertEq(govLPVault.balanceOf(CAT), 100 ether);
+    vm.stopPrank();
+
+    // Eve Stakes Half of POWAA-ETH Univswap V2 LP Token to the contract
+    // EVE's current LP balance = 101000e18 * 100e18 / 101000e18 = 100 LP
+    vm.startPrank(EVE);
+    powaaETHUniswapV2LP.approve(address(govLPVault), 50 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(EVE, 50 ether);
+
+    govLPVault.stake(50 ether);
+
+    assertEq(govLPVault.balanceOf(EVE), 50 ether);
+    vm.stopPrank();
+
+    // Warp to the half of the campaign
+    uint256 periodFinish = usdcTokenVault.periodFinish();
+    uint256 campaignEndBlock = usdcTokenVault.campaignEndBlock();
+    vm.roll(block.number + (campaignEndBlock - block.number) / 2);
+    vm.warp(block.timestamp + (periodFinish - block.timestamp) / 2);
+
+    // Bob suddenly wants to withdraw half of his stake
+    // -> startBlock >>>> currentBlock (half) >>>> campaignEndBlock
+    // -> 15300000 >>>> 15300000 + (15500000 - 15300000) / 2  >>>> 15500000
+    // -> 15300000 >>>> 15300000 + 100000 = 15400000 >>>> 15500000
+    // 100000 / 200000 = 1/2 of max multiplier = 1/2 * 2% = 1%
+    // thus, Bob needs to pay the total fee of 500 * 1% = 5 USDC to the reserve
+    vm.startPrank(BOB);
+    uint256 bobUSDCBefore = USDC.balanceOf(BOB);
+
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(BOB, 495e6, 5e6);
+
+    usdcTokenVault.withdraw(500e6);
+    uint256 bobUSDCAfter = USDC.balanceOf(BOB);
+    vm.stopPrank();
+
+    // States should be updated correcetly
+    assertEq(bobUSDCAfter - bobUSDCBefore, 495e6);
+    assertEq(usdcTokenVault.balanceOf(BOB), 500e6);
+    assertEq(usdcTokenVault.reserve(), 5e6);
+
+    // Reserve's owner try to reduce reserve so that reserve can be used as a gas
+    // 5 USDC can be converted into 2873876295998942 =~ 0.002873876295998942 ETH
+    uint256 ownerEthBalanceBefore = address(this).balance;
+
+    vm.expectEmit(true, true, true, true);
+    emit ReduceReserve(5e6, 2873876295998942);
+
+    usdcTokenVault.reduceReserve();
+    uint256 ownerEthBalanceAfter = address(this).balance;
+    assertEq(ownerEthBalanceAfter - ownerEthBalanceBefore, 2873876295998942);
+
+    // Controller Accidentally Call migrate eventhough the time is not yet over
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_InvalidChainId()"));
+    controller.migrate();
+
+    // Warp to the end of the campaign
+    // Now, chainId has been branched to ETH POW Mainnet and ETH POS Mainnet, for ETH POW Mainnet, the integration test has been tested previously
+    // The following scenario would cover ETH POS Mainnet case, which shouldn't related to the migration at all
+    vm.roll(campaignEndBlock);
+    vm.warp(periodFinish);
+
+    // Controller Accidentally Call migrate in ETH POS
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_InvalidChainId()"));
+    controller.migrate();
+
+    // Block number has been passed the migration phase
+    vm.roll(campaignEndBlock + 1);
+
+    // Alice could not claim ETH since it's ETH POS, no migration happens here
+    vm.startPrank(ALICE);
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_NotYetMigrated()"));
+    usdcTokenVault.claimETH();
+
+    // Alice try to withdraw, she should be able to withdraw all staking tokens
+    assertEq(usdcTokenVault.balanceOf(ALICE), 1000e6);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(ALICE, 1000e6, 0);
+    usdcTokenVault.withdraw(1000e6);
+    assertEq(usdcTokenVault.balanceOf(ALICE), 0);
+    vm.stopPrank();
+
+    // Bob could not claim ETH since it's ETH POS, no migration happens here
+    vm.startPrank(BOB);
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_NotYetMigrated()"));
+    usdcTokenVault.claimETH();
+
+    // Bob try to withdraw, he should be able to withdraw all staking tokens
+    assertEq(usdcTokenVault.balanceOf(BOB), 500e6);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(BOB, 500e6, 0);
+    usdcTokenVault.withdraw(500e6);
+    assertEq(usdcTokenVault.balanceOf(BOB), 0);
+    vm.stopPrank();
+
+    // Cat could not claim ETH since it's ETH POS, no migration happens here
+    vm.startPrank(CAT);
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_NotYetMigrated()"));
+    govLPVault.claimETH();
+
+    // Cat try to withdraw, she should be able to withdraw all staking tokens
+    assertEq(govLPVault.balanceOf(CAT), 100 ether);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(CAT, 100 ether, 0);
+    govLPVault.withdraw(100 ether);
+    assertEq(govLPVault.balanceOf(CAT), 0);
+    vm.stopPrank();
+
+    // Eve could not claim ETH since it's ETH POS, no migration happens here
+    vm.startPrank(EVE);
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_NotYetMigrated()"));
+    govLPVault.claimETH();
+
+    // Eve try to withdraw, she should be able to withdraw all staking tokens
+    assertEq(govLPVault.balanceOf(EVE), 50 ether);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(EVE, 50 ether, 0);
+    govLPVault.withdraw(50 ether);
+    assertEq(govLPVault.balanceOf(EVE), 0);
     vm.stopPrank();
   }
 

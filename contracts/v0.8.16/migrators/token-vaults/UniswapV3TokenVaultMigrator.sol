@@ -14,7 +14,7 @@ import "../../../../lib/solmate/src/utils/FixedPointMathLib.sol";
 import "../../interfaces/IMigrator.sol";
 import "../../interfaces/IWETH9.sol";
 
-contract UniswapV2TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
+contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeTransferLib for address;
   using FixedPointMathLib for uint256;
   using SafeERC20 for IERC20;
@@ -44,8 +44,8 @@ contract UniswapV2TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   event WhitelistTokenVault(address tokenVault, bool whitelisted);
 
   /* ========== ERRORS ========== */
-  error UniswapV2VaultMigrator_OnlyWhitelistedTokenVault();
-  error UniswapV2VaultMigrator_InvalidFeeRate();
+  error UniswapV3VaultMigrator_OnlyWhitelistedTokenVault();
+  error UniswapV3VaultMigrator_InvalidFeeRate();
 
   /* ========== CONSTRUCTOR ========== */
   constructor(
@@ -57,7 +57,7 @@ contract UniswapV2TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     ISwapRouter _router
   ) {
     if (govLPTokenVaultFeeRate + treasuryFeeRate >= 1e18) {
-      revert UniswapV2VaultMigrator_InvalidFeeRate();
+      revert UniswapV3VaultMigrator_InvalidFeeRate();
     }
 
     treasury = _treasury;
@@ -72,7 +72,7 @@ contract UniswapV2TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
   modifier onlyWhitelistedTokenVault(address caller) {
     if (!tokenVaultOK[caller]) {
-      revert UniswapV2VaultMigrator_OnlyWhitelistedTokenVault();
+      revert UniswapV3VaultMigrator_OnlyWhitelistedTokenVault();
     }
     _;
   }

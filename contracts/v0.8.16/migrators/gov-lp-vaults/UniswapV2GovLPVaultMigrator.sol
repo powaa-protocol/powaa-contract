@@ -31,7 +31,6 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
   /* ========== ERRORS ========== */
   error UniswapV2GovLPVaultMigrator_OnlyWhitelistedTokenVault();
-  error UniswapV2GovLPVaultMigrator_InvalidFeeRate();
 
   /* ========== CONSTRUCTOR ========== */
   constructor(IUniswapV2Router02 _router) {

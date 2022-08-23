@@ -62,7 +62,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   /* ========== EVENTS ========== */
   event RewardAdded(uint256 reward);
   event Staked(address indexed user, uint256 amount);
-  event Withdrawn(address indexed user, uint256 amount);
+  event Withdrawn(address indexed user, uint256 amount, uint256 fee);
   event RewardPaid(address indexed user, uint256 reward);
   event RewardsDurationUpdated(uint256 newDuration);
   event Recovered(address token, uint256 amount);
@@ -288,7 +288,6 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     if (block.chainid == 1) {
       revert TokenVault_InvalidChainId();
     }
-
     isMigrated = true;
     bytes memory data = isGovLpVault
       ? abi.encode(address(stakingToken))
@@ -358,7 +357,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
 
     stakingToken.safeTransfer(msg.sender, actualWithdrawalAmount);
 
-    emit Withdrawn(msg.sender, _amount);
+    emit Withdrawn(msg.sender, actualWithdrawalAmount, withdrawalFee);
   }
 
   function claimGov() public nonReentrant updateReward(msg.sender) {

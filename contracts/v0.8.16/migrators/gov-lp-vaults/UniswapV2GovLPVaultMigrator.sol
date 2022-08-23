@@ -65,6 +65,7 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     address baseToken = address(ILp(lpToken).token0()) != address(WETH9)
       ? address(ILp(lpToken).token0())
       : address(ILp(lpToken).token1());
+
     uint256 liquidity = IERC20(lpToken).balanceOf(address(this));
     IERC20(lpToken).approve(address(router), liquidity);
     router.removeLiquidityETH(
@@ -80,6 +81,7 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     _path[0] = baseToken;
     _path[1] = WETH9;
     uint256 swapAmount = IERC20(baseToken).balanceOf(address(this));
+
     IERC20(baseToken).approve(address(router), swapAmount);
     router.swapExactTokensForETH(
       swapAmount,

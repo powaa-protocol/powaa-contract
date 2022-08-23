@@ -1,6 +1,6 @@
 # POWAA PROTOCOL
 <p align="center">
-  <img style="width: 60%" src="https://github.com/powaa-protocol/powaa-contract/blob/doc/readme/assets/usecase.png?raw=true" alt="meme_01" border="0" />
+  <img style="width: 60%" src="https://github.com/powaa-protocol/powaa-contract/blob/doc/readme/assets/meme_01.png?raw=true" alt="meme_01" border="0" />
 </p>
 
 Our protocol built specifically to help retails traders make the most out of the upcomming Ethereum Merge towards PoS. We together fight the gas war to get most of the ETHW out from the dying alt tokens.
@@ -23,7 +23,7 @@ You can participate in our protocol as
 - After The Merge, Alice can withdraw their deposited tokens from our token vault without any fee on PoS chain. Also they can withdraw ETHW from the token vault on the PoW chain as well. Free Money!
   
 <p align="center">
-  <img style="width: 60%" src="https://github.com/powaa-protocol/powaa-contract/blob/doc/readme/assets/usecase.png?raw=true" alt="meme_02" border="0" />
+  <img style="width: 60%" src="https://github.com/powaa-protocol/powaa-contract/blob/doc/readme/assets/meme_02.png?raw=true" alt="meme_02" border="0" />
 </p>
 
 ### 2. Liquidity Provider
@@ -32,7 +32,7 @@ You can participate in our protocol as
 - After The Merge, Bob can withdraw ETHW on PoW chain as well as ETH on the PoS chain. However, on the PoW chain, Bob also get an extra ETHW from a portion of protocol's operation fee.
 
 <p align="center">
-  <img style="width: 60%" src="https://github.com/powaa-protocol/powaa-contract/blob/doc/readme/assets/usecase.png?raw=true" alt="meme_03" border="0" />
+  <img style="width: 60%" src="https://github.com/powaa-protocol/powaa-contract/blob/doc/readme/assets/meme_03.png?raw=true" alt="meme_03" border="0" />
 </p>
 
 ## Contracts

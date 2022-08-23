@@ -12,7 +12,7 @@ Our protocol built specifically to help retails traders make the most out of the
 ---
 
 <p align="center">
-  <img style="width: 60%" src="https://github.com/powaa-protocol/powaa-contract/blob/doc/readme/assets/usecase.png?raw=true" alt="usecase" border="0" />
+  <img style="width: 90%" src="https://github.com/powaa-protocol/powaa-contract/blob/doc/readme/assets/usecase.png?raw=true" alt="usecase" border="0" />
 </p>
 
 You can participate in our protocol as 
@@ -23,7 +23,7 @@ You can participate in our protocol as
 - After The Merge, Alice can withdraw their deposited tokens from our token vault without any fee on PoS chain. Also they can withdraw ETHW from the token vault on the PoW chain as well. Free Money!
   
 <p align="center">
-  <img style="width: 60%" src="https://github.com/powaa-protocol/powaa-contract/blob/doc/readme/assets/meme_02.png?raw=true" alt="meme_02" border="0" />
+  <img style="width: 40%" src="https://github.com/powaa-protocol/powaa-contract/blob/doc/readme/assets/meme_02.png?raw=true" alt="meme_02" border="0" />
 </p>
 
 ### 2. Liquidity Provider

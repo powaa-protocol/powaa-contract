@@ -17,7 +17,7 @@ contract UniswapV2GovLPVaultMigrator_TestExecute is
   function test_WhenCallerIsNotWhitelistedContract() external {
     vm.expectRevert(
       abi.encodeWithSignature(
-        "UniswapV2VaultMigrator_OnlyWhitelistedTokenVault()"
+        "UniswapV2GovLPVaultMigrator_OnlyWhitelistedTokenVault()"
       )
     );
     uniswapV2GovLPVaultMigrator.execute(abi.encode(address(mockLp)));

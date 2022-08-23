@@ -62,10 +62,10 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
     return _impl;
   }
 
-  function _scaffoldUniswapV3TokenVaultMigratorTestState()
-    internal
-    returns (UniswapV3TokenVaultMigratorTestState memory)
-  {
+  function _scaffoldUniswapV3TokenVaultMigratorTestState(
+    uint256 _govLPTokenVaultFeeRate,
+    uint256 _treasuryFeeRate
+  ) internal returns (UniswapV3TokenVaultMigratorTestState memory) {
     UniswapV3TokenVaultMigratorTestState memory _state;
 
     _state.treasury = address(1123123);
@@ -77,8 +77,8 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
     _state.migrator = _setupUniswapV3TokenVaultMigrator(
       _state.treasury,
       _state.govLPTokenVault,
-      uint256(0.1 ether),
-      uint256(0.1 ether),
+      _govLPTokenVaultFeeRate,
+      _treasuryFeeRate,
       IV3SwapRouter(address(_state.fakeSwapRouter))
     );
 

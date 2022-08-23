@@ -31,8 +31,8 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   event Execute(uint256 vaultReward);
 
   /* ========== ERRORS ========== */
-  error UniswapV2VaultMigrator_OnlyWhitelistedTokenVault();
-  error UniswapV2VaultMigrator_InvalidFeeRate();
+  error UniswapV2GovLPVaultMigrator_OnlyWhitelistedTokenVault();
+  error UniswapV2GovLPVaultMigrator_InvalidFeeRate();
 
   /* ========== CONSTRUCTOR ========== */
   constructor(IUniswapV2Router02 _router) {
@@ -43,7 +43,7 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
   modifier onlyWhitelistedTokenVault(address caller) {
     if (!tokenVaultOK[caller]) {
-      revert UniswapV2VaultMigrator_OnlyWhitelistedTokenVault();
+      revert UniswapV2GovLPVaultMigrator_OnlyWhitelistedTokenVault();
     }
     _;
   }

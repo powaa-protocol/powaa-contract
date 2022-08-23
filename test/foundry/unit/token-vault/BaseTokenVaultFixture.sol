@@ -3,12 +3,15 @@ pragma solidity 0.8.16;
 
 import "../_base/BaseTest.sol";
 import "../_mock/MockERC20.sol";
+import "../_mock/MockGovLpToken.sol";
 import "../_mock/MockMigrator.sol";
 import "../_mock/MockFeeModel.sol";
 import "../../../../contracts/v0.8.16/TokenVault.sol";
 
 abstract contract BaseTokenVaultFixture is BaseTest {
   uint256 public constant STAKE_AMOUNT_1000 = 1000 * 1e18;
+
+  address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
   event RewardAdded(uint256 reward);
   event Staked(address indexed user, uint256 amount);
@@ -35,6 +38,7 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     MockMigrator fakeReserveMigrator;
     MockERC20 fakeRewardToken;
     MockERC20 fakeStakingToken;
+    MockGovLpToken fakeGovLpToken;
   }
 
   function _setupFakeERC20(string memory _name, string memory _symbol)
@@ -84,8 +88,8 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     _state.controller = address(123451234);
     _state.rewardDistributor = address(123456789);
     _state.fakeFeeModel = new MockFeeModel();
-    _state.fakeMigrator = new MockMigrator();
-    _state.fakeReserveMigrator = new MockMigrator();
+    _state.fakeMigrator = new MockMigrator(false);
+    _state.fakeReserveMigrator = new MockMigrator(false);
     _state.fakeRewardToken = _setupFakeERC20("Reward Token", "RT");
     _state.fakeStakingToken = _setupFakeERC20("Staking Token", "ST");
 
@@ -96,6 +100,37 @@ abstract contract BaseTokenVaultFixture is BaseTest {
       address(_state.controller),
       IFeeModel(address(_state.fakeFeeModel)),
       false
+    );
+
+    return _state;
+  }
+
+  function _scaffoldTokenVaultLPTestState()
+    internal
+    returns (TokenVaultTestState memory)
+  {
+    TokenVaultTestState memory _state;
+    _state.controller = address(123451234);
+    _state.rewardDistributor = address(123456789);
+    _state.fakeFeeModel = new MockFeeModel();
+    _state.fakeMigrator = new MockMigrator(true);
+    _state.fakeReserveMigrator = new MockMigrator(true);
+    _state.fakeRewardToken = _setupFakeERC20("Reward Token", "RT");
+
+    _state.fakeGovLpToken = new MockGovLpToken(
+      IERC20(address(_state.fakeRewardToken))
+    );
+    _state.fakeStakingToken = MockERC20(payable(_state.fakeGovLpToken));
+
+    _state.fakeGovLpToken.initialize("Gov LP Token", "G-LP");
+
+    _state.tokenVault = _setupTokenVault(
+      address(_state.rewardDistributor),
+      address(_state.fakeRewardToken),
+      address(_state.fakeGovLpToken),
+      address(_state.controller),
+      IFeeModel(address(_state.fakeFeeModel)),
+      true
     );
 
     return _state;

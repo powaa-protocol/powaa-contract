@@ -25,7 +25,8 @@ contract TokenVault_Test is BaseTokenVaultFixture {
       fakeMigrator: _fixture.fakeMigrator,
       fakeReserveMigrator: _fixture.fakeReserveMigrator,
       fakeRewardToken: _fixture.fakeRewardToken,
-      fakeStakingToken: _fixture.fakeStakingToken
+      fakeStakingToken: _fixture.fakeStakingToken,
+      fakeGovLpToken: _fixture.fakeGovLpToken
     });
 
     // we pre-minted our gov token to be distributed later

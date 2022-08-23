@@ -31,9 +31,9 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
   address public rewardsDistribution;
   address public rewardsToken;
   IERC20 public stakingToken;
-  uint256 public periodFinish = 0;
-  uint256 public rewardRate = 0;
-  uint256 public rewardsDuration = 7 days;
+  uint256 public periodFinish;
+  uint256 public rewardRate;
+  uint256 public rewardsDuration;
 
   uint256 public lastUpdateTime;
   uint256 public rewardPerTokenStored;
@@ -109,6 +109,7 @@ contract TokenVault is ITokenVault, ReentrancyGuard, Pausable, Ownable {
     controller = _controller;
     withdrawalFeeModel = IFeeModel(_withdrawalFeeModel);
     isGovLpVault = _isGovLpVault;
+    rewardsDuration = 7 days; // default 7 days
 
     if (!isGovLpVault) return;
 

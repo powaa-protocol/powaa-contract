@@ -39,25 +39,4 @@ contract UniswapV2GovLPVaultMigrator_TestExecute is
     assertEq(address(mockRouter).balance, 0);
     assertEq(balanceAfter - balanceBefore, 1e18);
   }
-
-  function test_WhenExecute_withWhitelistTokenVaultAndLeftoverTokens()
-    external
-  {
-    vm.deal(address(mockRouter), 1e18 * 2);
-
-    uint256 balanceBefore = address(this).balance;
-    assertEq(address(mockRouter).balance, 1e18 * 2);
-
-    uniswapV2GovLPVaultMigrator.whitelistTokenVault(address(this), true);
-
-    // Events should be correctly emitted
-    vm.expectEmit(true, true, true, true);
-    emit Execute(1e18);
-    uniswapV2GovLPVaultMigrator.execute(abi.encode(address(mockLp)));
-
-    uint256 balanceAfter = address(this).balance;
-
-    assertEq(address(mockRouter).balance, 1e18);
-    assertEq(balanceAfter - balanceBefore, 1e18);
-  }
 }

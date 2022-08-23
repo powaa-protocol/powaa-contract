@@ -146,4 +146,7 @@ contract UniswapV2TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
     emit Execute(vaultReward, govLPTokenVaultFee, treasuryFee);
   }
+
+  /// @dev Fallback function to accept ETH.
+  receive() external payable {}
 }

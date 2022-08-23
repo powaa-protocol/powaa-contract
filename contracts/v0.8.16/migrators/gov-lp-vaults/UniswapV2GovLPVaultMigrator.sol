@@ -27,7 +27,6 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   mapping(address => bool) public tokenVaultOK;
 
   /* ========== EVENTS ========== */
-  event RewardAdded(uint256 reward);
   event Execute(uint256 vaultReward);
 
   /* ========== ERRORS ========== */

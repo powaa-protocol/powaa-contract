@@ -9,7 +9,7 @@ import "../../../../lib/mock-contract/contracts/MockContract.sol";
 
 import "./MockERC20.sol";
 
-contract MockSwapRouter is MockContract {
+contract MockV3SwapRouter is MockContract {
   using SafeTransferLib for address;
   using SafeMath for uint256;
 

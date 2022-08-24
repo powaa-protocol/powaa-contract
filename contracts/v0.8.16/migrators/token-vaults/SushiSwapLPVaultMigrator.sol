@@ -13,11 +13,15 @@ import "../../../../lib/solmate/src/utils/FixedPointMathLib.sol";
 import "../../interfaces/IMigrator.sol";
 import "../../interfaces/apis/IUniswapV2Router02.sol";
 import "../../interfaces/ILp.sol";
+import "../../interfaces/IWETH9.sol";
 
 contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeTransferLib for address;
   using FixedPointMathLib for uint256;
   using SafeERC20 for IERC20;
+
+  /* ========== CONSTANT ========== */
+  address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
   /* ========== STATE VARIABLES ========== */
   uint256 public govLPTokenVaultFeeRate;

@@ -16,6 +16,7 @@ abstract contract UniswapV2GovLPVaultMigratorBaseTest is BaseTest {
 
   MockUniswapV2Router01 internal mockRouter;
   MockETHLpToken internal mockLp;
+  MockERC20 internal mockBaseToken;
   MockERC20 internal mockToken;
 
   UniswapV2GovLPVaultMigrator internal uniswapV2GovLPVaultMigrator;
@@ -31,12 +32,19 @@ abstract contract UniswapV2GovLPVaultMigratorBaseTest is BaseTest {
       IUniswapV2Router02(address(mockRouter))
     );
 
+    mockRouter.mockMapBaseTokenWithLPToken(
+      address(mockBaseToken),
+      address(mockLp)
+    );
+    mockRouter.mockSetLpRemoveLiquidityRate(
+      address(mockLp),
+      uint256(0.5 ether),
+      uint256(0.5 ether)
+    );
+
     // pre-minted token for mocking purposes
     mockLp.mint(address(uniswapV2GovLPVaultMigrator), 1e18);
-    MockERC20(payable(address(mockLp.token0()))).mint(
-      address(uniswapV2GovLPVaultMigrator),
-      1e18
-    );
+    MockERC20(payable(address(mockBaseToken))).mint(address(mockRouter), 1e18);
     vm.deal(address(mockRouter), 1e18);
   }
 
@@ -72,8 +80,8 @@ abstract contract UniswapV2GovLPVaultMigratorBaseTest is BaseTest {
     internal
     returns (MockETHLpToken)
   {
-    MockERC20 mockRewardToken = _setupFakeERC20("MockRewardToken", "MRT");
-    MockETHLpToken _impl = new MockETHLpToken(IERC20(address(mockRewardToken)));
+    mockBaseToken = _setupFakeERC20("MockRewardToken", "MRT");
+    MockETHLpToken _impl = new MockETHLpToken(IERC20(address(mockBaseToken)));
     _impl.initialize(_name, _symbol);
     return MockETHLpToken(payable(_impl));
   }

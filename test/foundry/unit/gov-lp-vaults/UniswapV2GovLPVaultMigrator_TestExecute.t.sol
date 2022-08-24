@@ -25,8 +25,6 @@ contract UniswapV2GovLPVaultMigrator_TestExecute is
 
   function test_WhenExecute_withWhitelistTokenVault() external {
     uint256 balanceBefore = address(this).balance;
-    assertEq(address(mockRouter).balance, 1e18);
-
     uniswapV2GovLPVaultMigrator.whitelistTokenVault(address(this), true);
 
     // Events should be correctly emitted
@@ -36,7 +34,6 @@ contract UniswapV2GovLPVaultMigrator_TestExecute is
 
     uint256 balanceAfter = address(this).balance;
 
-    assertEq(address(mockRouter).balance, 0);
     assertEq(balanceAfter - balanceBefore, 1e18);
   }
 }

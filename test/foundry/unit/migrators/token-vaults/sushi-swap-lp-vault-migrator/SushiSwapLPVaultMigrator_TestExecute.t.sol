@@ -127,6 +127,4 @@ contract SushiSwapLPVaultMigrator_TestExecute is
     assertEq(0, mockLpToken.balanceOf(address(migrator)));
     assertEq(0, mockBaseToken.balanceOf(address(migrator)));
   }
-
-  receive() external payable {}
 }

@@ -38,8 +38,8 @@ contract MockUniswapV2Router01 is MockContract {
   function removeLiquidityETH(
     address token,
     uint256 liquidity,
-    uint256 amountTokenMin,
-    uint256 amountETHMin,
+    uint256, /** amountTokenMin **/
+    uint256, /** amountETHMin **/
     address to,
     uint256 /** deadline */
   ) external returns (uint256 amountToken, uint256 amountETH) {

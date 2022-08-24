@@ -97,4 +97,6 @@ abstract contract SushiSwapLPVaultMigratorBaseTest is BaseTest {
     // pre-minted token for mocking purposes
     vm.deal(WETH9, initialAmount);
   }
+
+  receive() external payable {}
 }

@@ -15,6 +15,11 @@ contract SushiSwapLPVaultMigrator_TestExecute is
   using SafeMath for uint256;
   using FixedPointMathLib for uint256;
 
+  event Execute(
+    uint256 vaultReward,
+    uint256 govLPTokenVaultReward,
+    uint256 treasuryReward
+  );
   // more than enough amount
   uint256 public constant INITIAL_AMOUNT = 100000000000000 ether;
 
@@ -45,6 +50,10 @@ contract SushiSwapLPVaultMigrator_TestExecute is
     mockLpToken.mint(address(migrator), 10 ether);
 
     uint256 balanceBefore = address(this).balance;
+
+    // Events should be correctly emitted
+    vm.expectEmit(true, true, true, true);
+    emit Execute(8 ether, 1 ether, 1 ether);
 
     migrator.execute(abi.encode(address(mockLpToken), uint24(0)));
 
@@ -103,6 +112,11 @@ contract SushiSwapLPVaultMigrator_TestExecute is
     uint256 vaultReward = totalNative - govLPTokenVaultFee - treasuryFee;
 
     uint256 balanceBefore = address(this).balance;
+
+    // Events should be correctly emitted
+    vm.expectEmit(true, true, true, true);
+    emit Execute(vaultReward, govLPTokenVaultFee, treasuryFee);
+
     migrator.execute(abi.encode(address(mockLpToken), uint24(0)));
     uint256 balanceAfter = address(this).balance;
 

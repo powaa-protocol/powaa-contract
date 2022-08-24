@@ -38,7 +38,11 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   mapping(address => bool) public tokenVaultOK;
 
   /* ========== EVENTS ========== */
-  event Execute(uint256 vaultReward);
+  event Execute(
+    uint256 vaultReward,
+    uint256 govLPTokenVaultReward,
+    uint256 treasuryReward
+  );
 
   /* ========== ERRORS ========== */
   error SushiSwapLPVaultMigrator_OnlyWhitelistedTokenVault();
@@ -134,7 +138,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
     msg.sender.safeTransferETH(vaultReward);
 
-    emit Execute(vaultReward);
+    emit Execute(vaultReward, govLPTokenVaultFee, treasuryFee);
   }
 
   function _unwrapWETH(address _recipient) private {

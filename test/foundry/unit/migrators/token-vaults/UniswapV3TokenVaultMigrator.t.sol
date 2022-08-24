@@ -60,7 +60,7 @@ contract UniswapV3TokenVaultMigrator_Test is
     );
   }
 
-  function testExecute_whenProperlyCallWithWhitelistedAccount() external {
+  function testExecute_WhenProperlyCallWithWhitelistedAccount() external {
     fixture.fakeStakingToken.mint(address(fixture.migrator), 1000 ether);
     fixture.fakeSwapRouter.mockSetSwapRate(
       address(fixture.fakeStakingToken),
@@ -84,7 +84,7 @@ contract UniswapV3TokenVaultMigrator_Test is
     assertEq(100 ether, address(fixture.govLPTokenVault).balance);
   }
 
-  function testExecute_whenProperlyCallWithWhitelistedAccount_Fuzzy(
+  function testExecute_WhenProperlyCallWithWhitelistedAccount_Fuzzy(
     uint256 amount,
     uint256 stakingTokenToEthRate,
     uint256 govLPTokenVaultFeeRate,
@@ -142,7 +142,7 @@ contract UniswapV3TokenVaultMigrator_Test is
     );
   }
 
-  function testExecute_whenCallWithWhitelistedAccountAndNoStakedTokenBalance()
+  function testExecute_WhenCallWithWhitelistedAccount_WithNoStakedTokenBalance()
     external
   {
     fixture.fakeStakingToken.mint(address(fixture.migrator), 0);
@@ -164,7 +164,7 @@ contract UniswapV3TokenVaultMigrator_Test is
     assertEq(0, address(fixture.govLPTokenVault).balance);
   }
 
-  function testExecute_whenCallWithUnauthorizedAccount() external {
+  function testExecute_WhenCallWithUnauthorizedAccount() external {
     vm.expectRevert(
       abi.encodeWithSignature(
         "UniswapV3TokenVaultMigrator_OnlyWhitelistedTokenVault()"

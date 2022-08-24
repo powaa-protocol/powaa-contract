@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "../_base/BaseTest.sol";
 import "../_mock/MockERC20.sol";
-import "../_mock/MockGovLpToken.sol";
+import "../_mock/MockETHLpToken.sol";
 import "../_mock/MockMigrator.sol";
 import "../_mock/MockFeeModel.sol";
 import "../../../../contracts/v0.8.16/TokenVault.sol";
@@ -38,7 +38,7 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     MockMigrator fakeReserveMigrator;
     MockERC20 fakeRewardToken;
     MockERC20 fakeStakingToken;
-    MockGovLpToken fakeGovLpToken;
+    MockETHLpToken fakeGovLpToken;
   }
 
   function _setupFakeERC20(string memory _name, string memory _symbol)
@@ -117,7 +117,7 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     _state.fakeReserveMigrator = new MockMigrator(true);
     _state.fakeRewardToken = _setupFakeERC20("Reward Token", "RT");
 
-    _state.fakeGovLpToken = new MockGovLpToken(
+    _state.fakeGovLpToken = new MockETHLpToken(
       IERC20(address(_state.fakeRewardToken))
     );
     _state.fakeStakingToken = MockERC20(payable(_state.fakeGovLpToken));

@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "../../_base/BaseTest.sol";
 import "../../_mock/MockERC20.sol";
-import "../../_mock/MockSwapRouter.sol";
+import "../../_mock/MockV3SwapRouter.sol";
 import "../../_mock/MockTokenVault.sol";
 import "../../../../../contracts/v0.8.16/migrators/token-vaults/UniswapV3TokenVaultMigrator.sol";
 
@@ -12,7 +12,7 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
     UniswapV3TokenVaultMigrator migrator;
     address treasury;
     address govLPTokenVault;
-    MockSwapRouter fakeSwapRouter;
+    MockV3SwapRouter fakeSwapRouter;
     MockTokenVault fakeTokenVault;
     MockERC20 fakeStakingToken;
   }
@@ -70,7 +70,7 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
 
     _state.treasury = address(1123123);
     _state.govLPTokenVault = address(3213321);
-    _state.fakeSwapRouter = new MockSwapRouter();
+    _state.fakeSwapRouter = new MockV3SwapRouter();
     _state.fakeTokenVault = new MockTokenVault();
     _state.fakeStakingToken = _setupFakeERC20("Fake Token", "FT");
 

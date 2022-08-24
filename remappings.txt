@@ -1,5 +1,8 @@
-@openzeppelin/=node_modules/@openzeppelin/
-@rari-capital/solmate/=lib/solmate/src/
-@chainlink/=node_modules/@chainlink/
 forge-std/=lib/forge-std/src/
+ds-test/=lib/forge-std/lib/ds-test/src/
+@openzeppelin/=node_modules/@openzeppelin/
+@gnosis.pm/mock-contract/=lib/mock-contract/contracts/
 mock-contract/=lib/mock-contract/contracts/
+@rari-capital/solmate/=lib/solmate/src/
+@uniswap=node_modules/@uniswap/
+@chainlink/=node_modules/@chainlink/

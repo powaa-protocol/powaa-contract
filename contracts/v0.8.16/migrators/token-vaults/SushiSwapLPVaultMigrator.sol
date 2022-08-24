@@ -15,6 +15,8 @@ import "../../interfaces/apis/IUniswapV2Router02.sol";
 import "../../interfaces/ILp.sol";
 import "../../interfaces/IWETH9.sol";
 
+import "forge-std/console2.sol";
+
 contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeTransferLib for address;
   using FixedPointMathLib for uint256;
@@ -104,6 +106,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     );
 
     uint256 swapAmount = IERC20(baseToken).balanceOf(address(this));
+    IERC20(baseToken).approve(address(v3Router), swapAmount);
+
     IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
       .ExactInputSingleParams({
         tokenIn: baseToken,

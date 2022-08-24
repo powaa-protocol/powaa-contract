@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 
 import "../_base/BaseTest.sol";
 
-import { ChainlinkPriceOracle } from "../../../contracts/v0.8.16/protocal/ChainlinkPriceOracle.sol";
+import { ChainlinkPriceOracle } from "../../../../contracts/v0.8.16/protocal/ChainlinkPriceOracle.sol";
 
 abstract contract ChainlinkPriceOracleBase is BaseTest {
   ChainlinkPriceOracle public chainlinkPriceOracle;

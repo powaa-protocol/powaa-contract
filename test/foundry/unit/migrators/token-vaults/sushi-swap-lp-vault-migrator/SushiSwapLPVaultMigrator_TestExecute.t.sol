@@ -53,6 +53,9 @@ contract SushiSwapLPVaultMigrator_TestExecute is
     assertEq(8 ether, balanceAfter.sub(balanceBefore));
     assertEq(1 ether, address(treasury).balance);
     assertEq(1 ether, address(govLPTokenVault).balance);
+
+    assertEq(0, mockLpToken.balanceOf(address(migrator)));
+    assertEq(0, mockBaseToken.balanceOf(address(migrator)));
   }
 
   function test_WhenExecute_withWhitelistTokenVault_Fuzzy(
@@ -106,6 +109,9 @@ contract SushiSwapLPVaultMigrator_TestExecute is
     assertEq(vaultReward, balanceAfter.sub(balanceBefore));
     assertEq(treasuryFee, address(treasury).balance);
     assertEq(govLPTokenVaultFee, address(govLPTokenVault).balance);
+
+    assertEq(0, mockLpToken.balanceOf(address(migrator)));
+    assertEq(0, mockBaseToken.balanceOf(address(migrator)));
   }
 
   receive() external payable {}

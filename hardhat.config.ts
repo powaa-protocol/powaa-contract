@@ -19,8 +19,6 @@ const chainIds = {
   ropsten: 3,
 };
 
-
-
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
@@ -33,9 +31,7 @@ module.exports = {
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,
       timeout: 1800000,
-      accounts: [
-        
-      ],
+      accounts: [],
     },
     devnet: {
       url: "http://localhost:5000",
@@ -78,7 +74,7 @@ module.exports = {
   },
   typechain: {
     outDir: "./typechain",
-    target:  "ethers-v5",
+    target: "ethers-v5",
   },
   mocha: {
     timeout: 800000,

@@ -1,6 +1,6 @@
 {
   "name": "@powaa/powaa-contract",
-  "version": "0.0.1",
+  "version": "0.0.1-rc.0",
   "author": {
     "name": "Powaa Protocol Development Team"
   },
@@ -10,9 +10,10 @@
     "build:foundry-ffi": "tsc -p tsconfig.foundry-ffi.json",
     "build": "tsc -p tsconfig.cjs.json; yarn copy-dts-typechain",
     "remove:sol-log": "hardhat remove-logs",
-    "test": "yarn test:py; yarn test:hardhat; yarn test:foundry",
-    "test:hardhat": "hardhat test",
-    "test:foundry": "yarn test:foundry:unit; yarn test:foundry:integration;",
+    "test": "yarn test:foundry",
+    "test:foundry:unit": "forge test --ffi -vvv;",
+    "test:foundry:integration": "make test-integration",
+    "test:foundry": "yarn test:foundry:unit; yarn test:foundry:integration",
     "compile": "rm -rf artifacts/ typechain/ compiled-typechain/ out/; yarn hardhat typechain --config hardhat.config.ts; forge build"
   },
   "license": "BUSL-1.1",
@@ -55,7 +56,9 @@
     "typescript": "4.7.4"
   },
   "dependencies": {
-    "@makerdao/hardhat-utils": "0.1.3"
+    "@makerdao/hardhat-utils": "0.1.3",
+    "@uniswap/swap-router-contracts": "^1.3.0",
+    "@uniswap/v3-periphery": "^1.4.1"
   },
   "files": [
     "typechain",

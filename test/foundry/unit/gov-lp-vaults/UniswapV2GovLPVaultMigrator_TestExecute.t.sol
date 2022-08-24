@@ -23,7 +23,7 @@ contract UniswapV2GovLPVaultMigrator_TestExecute is
     uniswapV2GovLPVaultMigrator.execute(abi.encode(address(mockLp)));
   }
 
-  function test_WhenExecute_withWhitelistTokenVault() external {
+  function test_WhenExecute_WithWhitelistTokenVault() external {
     uint256 balanceBefore = address(this).balance;
     uniswapV2GovLPVaultMigrator.whitelistTokenVault(address(this), true);
 

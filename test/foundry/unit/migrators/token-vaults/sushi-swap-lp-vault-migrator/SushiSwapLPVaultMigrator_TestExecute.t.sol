@@ -44,7 +44,7 @@ contract SushiSwapLPVaultMigrator_TestExecute is
     migrator.execute(abi.encode(address(mockLpToken), uint24(0)));
   }
 
-  function test_WhenExecute_withWhitelistTokenVault() external {
+  function test_WhenExecute_WithWhitelistTokenVault() external {
     migrator.whitelistTokenVault(address(this), true);
 
     mockLpToken.mint(address(migrator), 10 ether);
@@ -67,7 +67,7 @@ contract SushiSwapLPVaultMigrator_TestExecute is
     assertEq(0, mockBaseToken.balanceOf(address(migrator)));
   }
 
-  function test_WhenExecute_withWhitelistTokenVault_Fuzzy(
+  function test_WhenExecute_WithWhitelistTokenVault_Fuzzy(
     uint256 amount,
     uint256 lpTokenToBaseRate,
     uint256 lpTokenToEthRate,

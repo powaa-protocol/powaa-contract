@@ -16,8 +16,8 @@ import "../../../../../../contracts/v0.8.16/interfaces/apis/IUniswapV2Router02.s
 abstract contract SushiSwapLPVaultMigratorBaseTest is BaseTest {
   SushiSwapLPVaultMigrator internal migrator;
 
-  MockUniswapV2Router01 internal v2Router;
-  MockV3SwapRouter internal v3Router;
+  MockUniswapV2Router01 internal fakeSushiSwapRouter;
+  MockV3SwapRouter internal fakeUniswapRouter;
 
   MockERC20 internal mockBaseToken;
   MockETHLpToken internal mockLpToken;
@@ -32,8 +32,8 @@ abstract contract SushiSwapLPVaultMigratorBaseTest is BaseTest {
 
   /// @dev Foundry's setUp method
   function setUp() public virtual {
-    v2Router = new MockUniswapV2Router01();
-    v3Router = new MockV3SwapRouter();
+    fakeSushiSwapRouter = new MockUniswapV2Router01();
+    fakeUniswapRouter = new MockV3SwapRouter();
 
     migrator = _setupMigrator(0.1 ether, 0.1 ether);
 
@@ -41,17 +41,17 @@ abstract contract SushiSwapLPVaultMigratorBaseTest is BaseTest {
     mockLpToken = new MockETHLpToken(IERC20(address(mockBaseToken)));
     mockLpToken.initialize("BT-WETH LP", "BWELP");
 
-    v2Router.mockMapBaseTokenWithLPToken(
+    fakeSushiSwapRouter.mockMapBaseTokenWithLPToken(
       address(mockBaseToken),
       address(mockLpToken)
     );
-    v2Router.mockSetLpRemoveLiquidityRate(
+    fakeSushiSwapRouter.mockSetLpRemoveLiquidityRate(
       address(mockLpToken),
       uint256(0.5 ether),
       uint256(0.5 ether)
     );
 
-    v3Router.mockSetSwapRate(address(mockBaseToken), 1 ether);
+    fakeUniswapRouter.mockSetSwapRate(address(mockBaseToken), 1 ether);
   }
 
   function _setupMigrator(
@@ -63,8 +63,8 @@ abstract contract SushiSwapLPVaultMigratorBaseTest is BaseTest {
       govLPTokenVault,
       _govLPTokenVaultFeeRate,
       _treasuryFeeRate,
-      IUniswapV2Router02(address(v2Router)),
-      IV3SwapRouter(address(v3Router))
+      IUniswapV2Router02(address(fakeSushiSwapRouter)),
+      IV3SwapRouter(address(fakeUniswapRouter))
     );
 
     return _migrator;

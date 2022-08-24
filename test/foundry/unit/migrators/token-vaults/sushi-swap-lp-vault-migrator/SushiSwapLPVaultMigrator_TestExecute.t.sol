@@ -30,9 +30,9 @@ contract SushiSwapLPVaultMigrator_TestExecute is
     _setupMockWETH9(INITIAL_AMOUNT);
 
     // pre-minted relevant tokens to allow mock routers to fake doing the swap
-    vm.deal(address(v2Router), INITIAL_AMOUNT);
-    MockWETH9(payable(WETH9)).mint(address(v3Router), INITIAL_AMOUNT);
-    mockBaseToken.mint(address(v2Router), INITIAL_AMOUNT);
+    vm.deal(address(fakeSushiSwapRouter), INITIAL_AMOUNT);
+    MockWETH9(payable(WETH9)).mint(address(fakeUniswapRouter), INITIAL_AMOUNT);
+    mockBaseToken.mint(address(fakeSushiSwapRouter), INITIAL_AMOUNT);
   }
 
   function test_WhenCallerIsNotWhitelistedContract() external {
@@ -89,12 +89,15 @@ contract SushiSwapLPVaultMigrator_TestExecute is
     );
 
     migrator = _setupMigrator(govLPTokenVaultFeeRate, treasuryFeeRate);
-    v2Router.mockSetLpRemoveLiquidityRate(
+    fakeSushiSwapRouter.mockSetLpRemoveLiquidityRate(
       address(mockLpToken),
       lpTokenToBaseRate,
       lpTokenToEthRate
     );
-    v3Router.mockSetSwapRate(address(mockBaseToken), baseTokenToEthRate);
+    fakeUniswapRouter.mockSetSwapRate(
+      address(mockBaseToken),
+      baseTokenToEthRate
+    );
 
     migrator.whitelistTokenVault(address(this), true);
 

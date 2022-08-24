@@ -30,8 +30,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   address public treasury;
   address public govLPTokenVault;
 
-  IUniswapV2Router02 public v2Router;
-  IV3SwapRouter public v3Router;
+  IUniswapV2Router02 public sushiSwapRouter;
+  IV3SwapRouter public uniswapRouter;
 
   mapping(address => bool) public tokenVaultOK;
 
@@ -52,8 +52,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     address _govLPTokenVault,
     uint256 _govLPTokenVaultFeeRate,
     uint256 _treasuryFeeRate,
-    IUniswapV2Router02 _v2Router,
-    IV3SwapRouter _v3Router
+    IUniswapV2Router02 _sushiSwapRouter,
+    IV3SwapRouter _uniswapRouter
   ) {
     if (govLPTokenVaultFeeRate + treasuryFeeRate >= 1e18) {
       revert SushiSwapLPVaultMigrator_InvalidFeeRate();
@@ -64,8 +64,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
     treasuryFeeRate = _treasuryFeeRate;
 
-    v2Router = _v2Router;
-    v3Router = _v3Router;
+    sushiSwapRouter = _sushiSwapRouter;
+    uniswapRouter = _uniswapRouter;
   }
 
   /* ========== MODIFIERS ========== */
@@ -97,8 +97,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       : address(ILp(lpToken).token1());
 
     uint256 liquidity = IERC20(lpToken).balanceOf(address(this));
-    IERC20(lpToken).approve(address(v2Router), liquidity);
-    v2Router.removeLiquidityETH(
+    IERC20(lpToken).approve(address(sushiSwapRouter), liquidity);
+    sushiSwapRouter.removeLiquidityETH(
       baseToken,
       liquidity,
       0,
@@ -108,7 +108,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     );
 
     uint256 swapAmount = IERC20(baseToken).balanceOf(address(this));
-    IERC20(baseToken).approve(address(v3Router), swapAmount);
+    IERC20(baseToken).approve(address(uniswapRouter), swapAmount);
 
     IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
       .ExactInputSingleParams({
@@ -121,7 +121,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
         sqrtPriceLimitX96: 0
       });
 
-    v3Router.exactInputSingle(params);
+    uniswapRouter.exactInputSingle(params);
     _unwrapWETH(address(this));
 
     uint256 govLPTokenVaultFee = govLPTokenVaultFeeRate.mulWadDown(

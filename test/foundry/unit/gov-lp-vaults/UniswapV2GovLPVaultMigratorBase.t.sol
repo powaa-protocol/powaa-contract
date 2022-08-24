@@ -80,7 +80,7 @@ abstract contract UniswapV2GovLPVaultMigratorBaseTest is BaseTest {
     internal
     returns (MockETHLpToken)
   {
-    mockBaseToken = _setupFakeERC20("MockRewardToken", "MRT");
+    mockBaseToken = _setupFakeERC20("Mock Base Token", "MBT");
     MockETHLpToken _impl = new MockETHLpToken(IERC20(address(mockBaseToken)));
     _impl.initialize(_name, _symbol);
     return MockETHLpToken(payable(_impl));

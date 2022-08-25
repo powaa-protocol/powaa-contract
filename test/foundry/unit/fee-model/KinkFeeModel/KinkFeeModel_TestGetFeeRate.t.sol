@@ -13,11 +13,10 @@ contract KinkFeeModel_TestGetFeeRate is KinkFeeModelBaseTest {
     // Since start block is zero, no multiplier fee returned
     uint256 feeRate = kinkFeeModel.getFeeRate(0, 1, 2);
 
-    // tilizationRate = 0%
+    // utilizationRate = 0%
     // feeRate = baseRate + ( multiplierRate * utilizationRate)
     //         = 0 + ( ( 100 / 100 ) * 0% ) = 0
     assertEq(feeRate, kinkFeeModel.baseRate());
-    assertEq(feeRate, 0);
   }
 
   function test_WithZeroBaseRate_WhenStartBlockIsGTZero() external {
@@ -27,12 +26,36 @@ contract KinkFeeModel_TestGetFeeRate is KinkFeeModelBaseTest {
     //                 = 0.25
     //                 = 25%
     // feeRate = baseRate + ( multiplierRate * utilizationRate)
-    //         = 0 + ( ( 100 / 100 ) * 25% ) = 0
-    assertEq(feeRate, 0);
+    //         = 0 + ( ( 100 / 100 ) * 25% ) = 0.25
+    assertEq(feeRate, 0.25 ether);
+  }
+
+  function test_WithZeroBaseRate_WhenStartBlockIsGTZero_WhenUseingJumpRate()
+    external
+  {
+    kinkFeeModel = _setupKinkFeeModel(0 ether, 100 ether, 100 ether, 0.1 ether);
+
+    uint256 feeRate = kinkFeeModel.getFeeRate(1, 2, 5);
+
+    // utilizationRate = 2-1 / 5-1
+    //                 = 0.25
+    //                 = 25%
+    // normalRate = baseRate + ( multiplierRate * kink )
+    //            = 0 + ( ( 100 / 0.1 ) * 0.1 ) = 100
+    // excessUtil = utilizationRate - kink
+    //            = 25% - 0.1 = 0.15
+    // feeRate = ( excessUtil * jumpRate ) + normalRate
+    //         = ( 0.15 * 100 ) + 100 = 115
+    assertEq(feeRate, 115 ether);
   }
 
   function test_WithBaseRateGTZero_WhenStartBlockAtZero() external {
-    kinkFeeModel = _setupKinkFeeModel(50, 100, 100, 100 * 1e18);
+    kinkFeeModel = _setupKinkFeeModel(
+      50 ether,
+      100 ether,
+      100 ether,
+      100 ether
+    );
     // Since start block is zero, no multiplier fee returned
     uint256 feeRate = kinkFeeModel.getFeeRate(0, 1, 2);
 
@@ -40,19 +63,46 @@ contract KinkFeeModel_TestGetFeeRate is KinkFeeModelBaseTest {
     // feeRate = baseRate + ( multiplierRate * utilizationRate)
     //         = 50 + ( ( 100 / 100 ) * 0% ) = 50
     assertEq(feeRate, kinkFeeModel.baseRate());
-    assertEq(feeRate, 50);
   }
 
   function test_WithBaseRateGTZero_WhenStartBlockAtNoneZero() external {
-    kinkFeeModel = _setupKinkFeeModel(50, 100, 100, 100 * 1e18);
+    kinkFeeModel = _setupKinkFeeModel(
+      50 ether,
+      100 ether,
+      100 ether,
+      100 ether
+    );
     uint256 feeRate = kinkFeeModel.getFeeRate(1, 2, 5);
 
     // utilizationRate = 2-1 / 5-1
     //                 = 0.25
     //                 = 25%
     // feeRate = baseRate + ( multiplierRate * utilizationRate)
-    //         = 50 + ( ( 100 / 100 ) * 25% ) = 50
-    assertEq(feeRate, 50);
+    //         = 50 + ( ( 100 / 100 ) * 25% ) = 50.25
+    assertEq(feeRate, 50.25 ether);
+  }
+
+  function test_WithBaseRateGTZero_WhenStartBlockAtNoneZero_WhenUseingJumpRate()
+    external
+  {
+    kinkFeeModel = _setupKinkFeeModel(
+      50 ether,
+      100 ether,
+      100 ether,
+      0.1 ether
+    );
+    uint256 feeRate = kinkFeeModel.getFeeRate(1, 2, 5);
+
+    // utilizationRate = 2-1 / 5-1
+    //                 = 0.25
+    //                 = 25%
+    // normalRate = baseRate + ( multiplierRate * kink )
+    //            = 50 + ( ( 100 / 0.1 ) * 0.1 ) = 150
+    // excessUtil = utilizationRate - kink
+    //            = 25% - 0.1 = 0.15
+    // feeRate = ( excessUtil * jumpRate ) + normalRate
+    //         = ( 0.15 * 100 ) + 150 = 165
+    assertEq(feeRate, 165 ether);
   }
 
   function test_WithFuzzyBaseRate_WithFuzzyMultiplierRate_WhenCurrentBlockLTStartBlock(

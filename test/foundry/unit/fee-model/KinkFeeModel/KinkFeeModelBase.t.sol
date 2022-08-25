@@ -15,7 +15,7 @@ abstract contract KinkFeeModelBaseTest is BaseTest {
 
   /// @dev Foundry's setUp method
   function setUp() public virtual {
-    kinkFeeModel = _setupKinkFeeModel(0, 100, 100, 100 * 1e18);
+    kinkFeeModel = _setupKinkFeeModel(0, 100 ether, 100 ether, 100 ether);
   }
 
   function _setupKinkFeeModel(

@@ -11,7 +11,7 @@ abstract contract LinearFeeModelBaseTest is BaseTest {
 
   /// @dev Foundry's setUp method
   function setUp() public virtual {
-    linearFeeModel = _setupLinearFeeModel(0, 100);
+    linearFeeModel = _setupLinearFeeModel(0, 100 ether);
   }
 
   function _setupLinearFeeModel(uint256 _baseRate, uint256 _multiplierRate)

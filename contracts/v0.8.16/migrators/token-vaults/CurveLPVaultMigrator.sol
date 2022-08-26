@@ -45,8 +45,8 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   );
 
   /* ========== ERRORS ========== */
-  error SushiSwapLPVaultMigrator_OnlyWhitelistedTokenVault();
-  error SushiSwapLPVaultMigrator_InvalidFeeRate();
+  error CurveLPVaultMigrator_OnlyWhitelistedTokenVault();
+  error CurveLPVaultMigrator_InvalidFeeRate();
 
   /* ========== CONSTRUCTOR ========== */
   constructor(
@@ -57,7 +57,7 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     IV3SwapRouter _uniswapRouter
   ) {
     if (govLPTokenVaultFeeRate + treasuryFeeRate >= 1e18) {
-      revert SushiSwapLPVaultMigrator_InvalidFeeRate();
+      revert CurveLPVaultMigrator_InvalidFeeRate();
     }
 
     treasury = _treasury;
@@ -72,7 +72,7 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
   modifier onlyWhitelistedTokenVault(address caller) {
     if (!tokenVaultOK[caller]) {
-      revert SushiSwapLPVaultMigrator_OnlyWhitelistedTokenVault();
+      revert CurveLPVaultMigrator_OnlyWhitelistedTokenVault();
     }
     _;
   }

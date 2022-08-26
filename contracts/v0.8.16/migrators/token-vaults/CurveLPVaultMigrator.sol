@@ -31,10 +31,11 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   address public treasury;
   address public govLPTokenVault;
 
-  ICurveFiStableSwap public curveStableSwap;
   IV3SwapRouter public uniswapRouter;
 
   mapping(address => bool) public tokenVaultOK;
+  mapping(address => ICurveFiStableSwap) public tokenVaultPoolRouter;
+  mapping(address => uint24) public poolUnderlyingCount;
 
   /* ========== EVENTS ========== */
   event Execute(
@@ -53,7 +54,6 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     address _govLPTokenVault,
     uint256 _govLPTokenVaultFeeRate,
     uint256 _treasuryFeeRate,
-    ICurveFiStableSwap _curveStableSwap,
     IV3SwapRouter _uniswapRouter
   ) {
     if (govLPTokenVaultFeeRate + treasuryFeeRate >= 1e18) {
@@ -65,7 +65,6 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
     treasuryFeeRate = _treasuryFeeRate;
 
-    curveStableSwap = _curveStableSwap;
     uniswapRouter = _uniswapRouter;
   }
 
@@ -86,6 +85,17 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     tokenVaultOK[tokenVault] = isOk;
   }
 
+  function mapTokenVaultRouter(
+    address tokenVault,
+    address curveFinancePoolRouter,
+    uint24 underlyingCount
+  ) external onlyOwner {
+    ICurveFiStableSwap router = ICurveFiStableSwap(curveFinancePoolRouter);
+
+    tokenVaultPoolRouter[tokenVault] = router;
+    poolUnderlyingCount[address(router)] = underlyingCount;
+  }
+
   /* ========== EXTERNAL FUNCTIONS ========== */
   function execute(bytes calldata _data)
     external
@@ -93,20 +103,27 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     nonReentrant
   {
     (address lpToken, uint24 poolFee) = abi.decode(_data, (address, uint24));
-    address[] memory coins = curveStableSwap.underlying_coins();
+    ICurveFiStableSwap curveStableSwap = tokenVaultPoolRouter[msg.sender];
 
     uint256 liquidity = IERC20(lpToken).balanceOf(address(this));
     IERC20(lpToken).approve(address(curveStableSwap), liquidity);
-    curveStableSwap.remove_liquidity(liquidity, new uint256[](coins.length));
 
-    uint24 i;
-    for (i = 0; i < coins.length; i++) {
-      uint256 swapAmount = IERC20(coins[i]).balanceOf(address(this));
-      IERC20(coins[i]).approve(address(uniswapRouter), swapAmount);
+    uint24 underlyingCount = poolUnderlyingCount[address(curveStableSwap)];
+    curveStableSwap.remove_liquidity(
+      liquidity,
+      [uint256(0), uint256(0), uint256(0), uint256(0)]
+    );
+
+    uint128 i;
+    for (i = 0; i < underlyingCount; i++) {
+      address coinAddress = curveStableSwap.coins((i));
+
+      uint256 swapAmount = IERC20(coinAddress).balanceOf(address(this));
+      IERC20(coinAddress).approve(address(uniswapRouter), swapAmount);
 
       IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
         .ExactInputSingleParams({
-          tokenIn: coins[i],
+          tokenIn: coinAddress,
           tokenOut: WETH9,
           fee: poolFee,
           recipient: address(this),

@@ -23,6 +23,8 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
   address internal constant tokenVaultTriCrypto2 = address(99999);
 
   MockCurveLpToken internal fakeStethLpToken;
+  MockCurveLpToken internal fake3PoolLpToken;
+  MockCurveLpToken internal fakeTriCrypto2LpToken;
 
   MockCurveFiStableSwap2 internal fakeCurveStethStableSwap;
   MockCurveFiStableSwap internal fakeCurve3PoolStableSwap;
@@ -42,18 +44,7 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
 
   /// @dev Foundry's setUp method
   function setUp() public virtual {
-    IERC20[4] memory stethLPUnderlyings;
-    stethLPUnderlyings[0] = IERC20(WETH9);
-    stethLPUnderlyings[1] = IERC20(
-      address(_setupFakeERC20("Lido Staked ETH", "stETH"))
-    );
-
-    fakeStethLpToken = new MockCurveLpToken(stethLPUnderlyings);
-
-    fakeCurveStethStableSwap = new MockCurveFiStableSwap2();
-    fakeCurve3PoolStableSwap = new MockCurveFiStableSwap();
-    fakeCurveTriCrypto2StableSwap = new MockCurveFiStableSwap();
-
+    _setupMockWETH9(100000000 ether);
     fakeUniswapRouter = new MockV3SwapRouter();
 
     migrator = _setupMigrator(0.1 ether, 0.1 ether);
@@ -64,21 +55,107 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
 
     fakeUniswapRouter.mockSetSwapRate(address(mockBaseToken), 1 ether);
 
+    _setupFakeCurveStETHPoolLP();
+    _setupFakeCurve3PoolLP();
+    _setupFakeCurveTriCryptoLP();
+  }
+
+  function _setupFakeCurveStETHPoolLP() internal {
+    MockERC20[4] memory stethLPUnderlyings;
+    stethLPUnderlyings[0] = MockERC20(payable(WETH9));
+    stethLPUnderlyings[1] = _setupFakeERC20("Lido Staked ETH", "stETH");
+
+    uint256[2] memory exchangeRates;
+    exchangeRates[0] = 0.5 ether;
+    exchangeRates[1] = 0.5 ether;
+
+    fakeStethLpToken = new MockCurveLpToken(stethLPUnderlyings);
+    fakeCurveStethStableSwap = new MockCurveFiStableSwap2(
+      fakeStethLpToken,
+      exchangeRates
+    );
+
+    migrator.whitelistTokenVault(tokenVaultSteth, true);
     migrator.mapTokenVaultRouter(
       tokenVaultSteth,
       address(fakeCurveStethStableSwap),
       2
     );
+  }
+
+  function _preMintFakeCurveStETHPoolLPUnderlyings(address to, uint256 amount)
+    internal
+  {
+    fakeStethLpToken.tokens(0).mint(to, amount);
+    fakeStethLpToken.tokens(1).mint(to, amount);
+  }
+
+  function _setupFakeCurve3PoolLP() internal {
+    // DAI, USDC, USDT
+    MockERC20[4] memory threePoolLPUnderlyings;
+    threePoolLPUnderlyings[0] = _setupFakeERC20("Fake DAI", "DAI");
+    threePoolLPUnderlyings[1] = _setupFakeERC20("Fake USDC", "USDC");
+    threePoolLPUnderlyings[2] = _setupFakeERC20("Fake USDT", "USDT");
+
+    uint256[3] memory exchangeRates;
+    exchangeRates[0] = 0.3 ether;
+    exchangeRates[1] = 0.3 ether;
+    exchangeRates[2] = 0.4 ether;
+
+    fake3PoolLpToken = new MockCurveLpToken(threePoolLPUnderlyings);
+    fakeCurve3PoolStableSwap = new MockCurveFiStableSwap(
+      fake3PoolLpToken,
+      exchangeRates
+    );
+
+    migrator.whitelistTokenVault(tokenVault3Pool, true);
     migrator.mapTokenVaultRouter(
       tokenVault3Pool,
       address(fakeCurve3PoolStableSwap),
       3
     );
+  }
+
+  function _preMintFakeCurve3PoolLPUnderlyings(address to, uint256 amount)
+    internal
+  {
+    fake3PoolLpToken.tokens(0).mint(to, amount);
+    fake3PoolLpToken.tokens(1).mint(to, amount);
+    fake3PoolLpToken.tokens(2).mint(to, amount);
+  }
+
+  function _setupFakeCurveTriCryptoLP() internal {
+    // USDT, BTC, ETH
+    MockERC20[4] memory triCrypto2LPUnderlyings;
+    triCrypto2LPUnderlyings[0] = _setupFakeERC20("Fake USDT", "USDT");
+    triCrypto2LPUnderlyings[1] = _setupFakeERC20("Fake BTC", "BTC");
+    triCrypto2LPUnderlyings[2] = _setupFakeERC20("Fake ETH", "ETH");
+
+    uint256[3] memory exchangeRates;
+    exchangeRates[0] = 0.4 ether;
+    exchangeRates[1] = 0.3 ether;
+    exchangeRates[2] = 0.3 ether;
+
+    fakeTriCrypto2LpToken = new MockCurveLpToken(triCrypto2LPUnderlyings);
+    fakeCurveTriCrypto2StableSwap = new MockCurveFiStableSwap(
+      fakeTriCrypto2LpToken,
+      exchangeRates
+    );
+
+    migrator.whitelistTokenVault(tokenVaultTriCrypto2, true);
     migrator.mapTokenVaultRouter(
       tokenVaultTriCrypto2,
       address(fakeCurveTriCrypto2StableSwap),
       3
     );
+  }
+
+  function _preMintFakeCurveTriCrypto2LPUnderlyings(address to, uint256 amount)
+    internal
+  {
+    fakeTriCrypto2LpToken.tokens(0).mint(to, amount);
+    fakeTriCrypto2LpToken.tokens(1).mint(to, amount);
+    fakeTriCrypto2LpToken.tokens(2).mint(to, amount);
   }
 
   function _setupMigrator(

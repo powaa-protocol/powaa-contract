@@ -24,6 +24,21 @@ contract CurveLPVaultMigrator_TestExecute is CurveLPVaultMigratorBaseTest {
   /// @dev foundry's setUp method
   function setUp() public override {
     super.setUp();
+
+    MockERC20(payable(WETH9)).mint(address(fakeUniswapRouter), INITIAL_AMOUNT);
+
+    _preMintFakeCurveStETHPoolLPUnderlyings(
+      address(fakeCurveStethStableSwap),
+      INITIAL_AMOUNT
+    );
+    _preMintFakeCurve3PoolLPUnderlyings(
+      address(fakeCurve3PoolStableSwap),
+      INITIAL_AMOUNT
+    );
+    _preMintFakeCurveTriCrypto2LPUnderlyings(
+      address(fakeCurveTriCrypto2StableSwap),
+      INITIAL_AMOUNT
+    );
   }
 
   function test_WhenCallerIsNotWhitelistedContract() external {
@@ -33,5 +48,143 @@ contract CurveLPVaultMigrator_TestExecute is CurveLPVaultMigratorBaseTest {
       )
     );
     migrator.execute(abi.encode(address(mockLpToken), uint24(0)));
+  }
+
+  function test_WhenCallWithWhitelistedContract_ToMigrateStETHPool() external {
+    vm.prank(fakeStethLpToken.owner());
+    MockERC20(fakeStethLpToken).mint(address(migrator), 10 ether);
+
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurveStethStableSwap.coins(0)),
+      1 ether
+    );
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurveStethStableSwap.coins(1)),
+      1 ether
+    );
+
+    vm.prank(tokenVaultSteth);
+    migrator.execute(abi.encode(address(fakeStethLpToken), uint24(0)));
+
+    assertEq(0, MockERC20(fakeStethLpToken).balanceOf(address(migrator)));
+    assertEq(8 ether, address(tokenVaultSteth).balance);
+    assertEq(1 ether, address(govLPTokenVault).balance);
+    assertEq(1 ether, address(treasury).balance);
+  }
+
+  function test_WhenCallWithWhitelistedContract_ToMigrate3Pool() external {
+    vm.prank(fake3PoolLpToken.owner());
+    MockERC20(fake3PoolLpToken).mint(address(migrator), 10 ether);
+
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurve3PoolStableSwap.coins(0)),
+      1 ether
+    );
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurve3PoolStableSwap.coins(1)),
+      1 ether
+    );
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurve3PoolStableSwap.coins(2)),
+      1 ether
+    );
+
+    vm.prank(tokenVault3Pool);
+    migrator.execute(abi.encode(address(fake3PoolLpToken), uint24(0)));
+
+    assertEq(0, MockERC20(fake3PoolLpToken).balanceOf(address(migrator)));
+    assertEq(8 ether, address(tokenVault3Pool).balance);
+    assertEq(1 ether, address(govLPTokenVault).balance);
+    assertEq(1 ether, address(treasury).balance);
+  }
+
+  function test_WhenCallWithWhitelistedContract_ToMigrateTriCrypto2() external {
+    vm.prank(fakeTriCrypto2LpToken.owner());
+    MockERC20(fakeTriCrypto2LpToken).mint(address(migrator), 10 ether);
+
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurveTriCrypto2StableSwap.coins(0)),
+      1 ether
+    );
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurveTriCrypto2StableSwap.coins(1)),
+      1 ether
+    );
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurveTriCrypto2StableSwap.coins(2)),
+      1 ether
+    );
+
+    vm.prank(tokenVaultTriCrypto2);
+    migrator.execute(abi.encode(address(fakeTriCrypto2LpToken), uint24(0)));
+
+    assertEq(0, MockERC20(fakeTriCrypto2LpToken).balanceOf(address(migrator)));
+    assertEq(8 ether, address(tokenVaultTriCrypto2).balance);
+    assertEq(1 ether, address(govLPTokenVault).balance);
+    assertEq(1 ether, address(treasury).balance);
+  }
+
+  function test_WhenCallWithWhitelistedContract_ToMigrateAllCurvePools()
+    external
+  {
+    vm.prank(fakeStethLpToken.owner());
+    MockERC20(fakeStethLpToken).mint(address(migrator), 10 ether);
+
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurveStethStableSwap.coins(0)),
+      1 ether
+    );
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurveStethStableSwap.coins(1)),
+      1 ether
+    );
+
+    vm.prank(fake3PoolLpToken.owner());
+    MockERC20(fake3PoolLpToken).mint(address(migrator), 10 ether);
+
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurve3PoolStableSwap.coins(0)),
+      1 ether
+    );
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurve3PoolStableSwap.coins(1)),
+      1 ether
+    );
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurve3PoolStableSwap.coins(2)),
+      1 ether
+    );
+
+    vm.prank(fakeTriCrypto2LpToken.owner());
+    MockERC20(fakeTriCrypto2LpToken).mint(address(migrator), 10 ether);
+
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurveTriCrypto2StableSwap.coins(0)),
+      1 ether
+    );
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurveTriCrypto2StableSwap.coins(1)),
+      1 ether
+    );
+    fakeUniswapRouter.mockSetSwapRate(
+      address(fakeCurveTriCrypto2StableSwap.coins(2)),
+      1 ether
+    );
+
+    vm.prank(tokenVaultSteth);
+    migrator.execute(abi.encode(address(fakeStethLpToken), uint24(0)));
+
+    vm.prank(tokenVault3Pool);
+    migrator.execute(abi.encode(address(fake3PoolLpToken), uint24(0)));
+
+    vm.prank(tokenVaultTriCrypto2);
+    migrator.execute(abi.encode(address(fakeTriCrypto2LpToken), uint24(0)));
+
+    assertEq(0, MockERC20(fakeTriCrypto2LpToken).balanceOf(address(migrator)));
+    assertEq(8 ether, address(tokenVaultSteth).balance);
+    assertEq(8 ether, address(tokenVault3Pool).balance);
+    assertEq(8 ether, address(tokenVaultTriCrypto2).balance);
+    assertEq(3 ether, address(govLPTokenVault).balance);
+    assertEq(3 ether, address(treasury).balance);
   }
 }

@@ -7,9 +7,9 @@ import "./MockERC20.sol";
 contract MockCurveLpToken is MockERC20 {
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-  IERC20[] public tokens;
+  MockERC20[] public tokens;
 
-  constructor(IERC20[4] memory _tokens) {
+  constructor(MockERC20[4] memory _tokens) {
     tokens = _tokens;
   }
 }

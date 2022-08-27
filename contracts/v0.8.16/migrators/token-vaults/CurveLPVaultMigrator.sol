@@ -109,12 +109,17 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     IERC20(lpToken).approve(address(curveStableSwap), liquidity);
 
     uint24 underlyingCount = poolUnderlyingCount[address(curveStableSwap)];
-    curveStableSwap.remove_liquidity(
-      liquidity,
-      [uint256(0), uint256(0), uint256(0), uint256(0)]
-    );
 
-    uint128 i;
+    if (underlyingCount == 3) {
+      curveStableSwap.remove_liquidity(
+        liquidity,
+        [uint256(0), uint256(0), uint256(0)]
+      );
+    } else {
+      curveStableSwap.remove_liquidity(liquidity, [uint256(0), uint256(0)]);
+    }
+
+    uint256 i;
     for (i = 0; i < underlyingCount; i++) {
       address coinAddress = curveStableSwap.coins((i));
 

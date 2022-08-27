@@ -180,6 +180,8 @@ contract CurveLPVaultMigrator_TestExecute is CurveLPVaultMigratorBaseTest {
     vm.prank(tokenVaultTriCrypto2);
     migrator.execute(abi.encode(address(fakeTriCrypto2LpToken), uint24(0)));
 
+    assertEq(0, MockERC20(fakeStethLpToken).balanceOf(address(migrator)));
+    assertEq(0, MockERC20(fake3PoolLpToken).balanceOf(address(migrator)));
     assertEq(0, MockERC20(fakeTriCrypto2LpToken).balanceOf(address(migrator)));
     assertEq(8 ether, address(tokenVaultSteth).balance);
     assertEq(8 ether, address(tokenVault3Pool).balance);

@@ -150,12 +150,12 @@ contract TokenVault is BaseTokenVault {
         return;
       }
       uint256 treasuryFee = treasuryFeeRate.mulWadDown(reducedETHAmount);
-      uint256 bountyFee = reducedETHAmount - treasuryFee;
+      uint256 executionFee = reducedETHAmount - treasuryFee;
 
-      msg.sender.safeTransferETH(bountyFee);
+      msg.sender.safeTransferETH(executionFee);
       treasury.safeTransferETH(treasuryFee);
 
-      emit ReduceReserve(msg.sender, _reserve, bountyFee);
+      emit ReduceReserve(msg.sender, _reserve, executionFee);
       emit ReduceReserve(treasury, _reserve, treasuryFee);
     }
   }

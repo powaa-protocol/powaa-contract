@@ -108,11 +108,11 @@ contract Controller is Ownable {
     _vaults[vaultLength] = govLPVault;
     ITokenVault(govLPVault).migrate();
 
-    uint256 bountyFee = address(this).balance;
-    if (bountyFee > 0) {
-      msg.sender.safeTransferETH(bountyFee);
+    uint256 executionFee = address(this).balance;
+    if (executionFee > 0) {
+      msg.sender.safeTransferETH(executionFee);
 
-      emit TransferFee(msg.sender, bountyFee);
+      emit TransferFee(msg.sender, executionFee);
     }
     emit Migrate(_vaults);
   }

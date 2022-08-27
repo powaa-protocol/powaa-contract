@@ -33,7 +33,7 @@ contract Controller is Ownable {
   /* ========== VIEWS ========== */
 
   function getDeterministicVault(address implementation, address _rewardsToken)
-    public
+    external
     view
     returns (address predicted)
   {

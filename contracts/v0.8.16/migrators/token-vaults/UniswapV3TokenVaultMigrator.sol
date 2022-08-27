@@ -25,9 +25,11 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   /* ========== STATE VARIABLES ========== */
   uint256 public govLPTokenVaultFeeRate;
   uint256 public treasuryFeeRate;
+  uint256 public controllerFeeRate;
 
   address public treasury;
   address public govLPTokenVault;
+  address public controller;
   IV3SwapRouter public router;
 
   mapping(address => bool) public tokenVaultOK;
@@ -36,7 +38,8 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   event Execute(
     uint256 vaultReward,
     uint256 govLPTokenVaultReward,
-    uint256 treasuryReward
+    uint256 treasuryReward,
+    uint256 controllerReward
   );
   event WhitelistTokenVault(address tokenVault, bool whitelisted);
 
@@ -47,9 +50,11 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   /* ========== CONSTRUCTOR ========== */
   constructor(
     address _treasury,
+    address _controller,
     address _govLPTokenVault,
     uint256 _govLPTokenVaultFeeRate,
     uint256 _treasuryFeeRate,
+    uint256 _controllerFeeRate,
     IV3SwapRouter _router
   ) {
     if (govLPTokenVaultFeeRate + treasuryFeeRate >= 1e18) {
@@ -57,9 +62,11 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     }
 
     treasury = _treasury;
+    controller = _controller;
     govLPTokenVault = _govLPTokenVault;
     govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
     treasuryFeeRate = _treasuryFeeRate;
+    controllerFeeRate = _controllerFeeRate;
     router = _router;
   }
 
@@ -121,14 +128,17 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       address(this).balance
     );
     uint256 treasuryFee = treasuryFeeRate.mulWadDown(address(this).balance);
+    uint256 controllerFee = controllerFeeRate.mulWadDown(address(this).balance);
     uint256 vaultReward = address(this).balance -
       govLPTokenVaultFee -
-      treasuryFee;
+      treasuryFee -
+      controllerFee;
     treasury.safeTransferETH(treasuryFee);
     govLPTokenVault.safeTransferETH(govLPTokenVaultFee);
+    controller.safeTransferETH(controllerFee);
     msg.sender.safeTransferETH(vaultReward);
 
-    emit Execute(vaultReward, govLPTokenVaultFee, treasuryFee);
+    emit Execute(vaultReward, govLPTokenVaultFee, treasuryFee, controllerFee);
   }
 
   /// @dev Fallback function to accept ETH.

@@ -41,6 +41,8 @@ contract TokenVault is BaseTokenVault {
 
   /* ========== ERRORS ========== */
   error TokenVault_InvalidChainId();
+  error TokenVault_InvalidTreasuryFeeRate();
+  error TokenVault_InvalidCampaignEndBlock();
 
   /* ========== MASTER CONTRACT INITIALIZE ========== */
   constructor() {
@@ -73,6 +75,13 @@ contract TokenVault is BaseTokenVault {
     address _treasury,
     uint256 _treasuryFeeRate
   ) external onlyMasterContractOwner {
+    if (treasuryFeeRate >= 1 ether) {
+      revert TokenVault_InvalidTreasuryFeeRate();
+    }
+    if (block.number >= _campaignEndBlock) {
+      revert TokenVault_InvalidCampaignEndBlock();
+    }
+
     migrator = _migrator;
     reserveMigrator = _reserveMigrator;
     campaignEndBlock = _campaignEndBlock;

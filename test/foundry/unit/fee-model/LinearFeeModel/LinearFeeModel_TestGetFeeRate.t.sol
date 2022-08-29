@@ -13,7 +13,7 @@ contract LinearFeeModel_TestGetFeeRate is LinearFeeModelBaseTest {
     // Since start block is zero, no multiplier fee returned
     uint256 feeRate = linearFeeModel.getFeeRate(0, 1, 2);
 
-    // tilizationRate = 0%
+    // utilizationRate = 0%
     // feeRate = baseRate + ( multiplierRate * utilizationRate)
     //         = 0 + ( 100 * 0% ) = 0
     assertEq(feeRate, linearFeeModel.baseRate());
@@ -28,11 +28,11 @@ contract LinearFeeModel_TestGetFeeRate is LinearFeeModelBaseTest {
     //                 = 25%
     // feeRate = baseRate + ( multiplierRate * utilizationRate)
     //         = 0 + ( 100 * 25% ) = 25
-    assertEq(feeRate, 25);
+    assertEq(feeRate, 25 ether);
   }
 
   function test_WithBaseRateGTZero_WhenStartBlockAtZero() external {
-    linearFeeModel = _setupLinearFeeModel(50, 100);
+    linearFeeModel = _setupLinearFeeModel(50 ether, 100 ether);
     // Since start block is zero, no multiplier fee returned
     uint256 feeRate = linearFeeModel.getFeeRate(0, 1, 2);
 
@@ -40,11 +40,11 @@ contract LinearFeeModel_TestGetFeeRate is LinearFeeModelBaseTest {
     // feeRate = baseRate + ( multiplierRate * utilizationRate)
     //         = 50 + ( 100 * 0% ) = 50
     assertEq(feeRate, linearFeeModel.baseRate());
-    assertEq(feeRate, 50);
+    assertEq(feeRate, 50 ether);
   }
 
   function test_WithBaseRateGTZero_WhenStartBlockAtNoneZero() external {
-    linearFeeModel = _setupLinearFeeModel(50, 100);
+    linearFeeModel = _setupLinearFeeModel(50 ether, 100 ether);
     uint256 feeRate = linearFeeModel.getFeeRate(1, 2, 5);
 
     // utilizationRate = 2-1 / 5-1
@@ -52,7 +52,7 @@ contract LinearFeeModel_TestGetFeeRate is LinearFeeModelBaseTest {
     //                 = 25%
     // feeRate = baseRate + ( multiplierRate * utilizationRate)
     //         = 50 + ( 100 * 25% ) = 75
-    assertEq(feeRate, 75);
+    assertEq(feeRate, 75 ether);
   }
 
   function test_WithFuzzyBaseRate_WithFuzzyMultiplierRate_WhenCurrentBlockLTStartBlock(

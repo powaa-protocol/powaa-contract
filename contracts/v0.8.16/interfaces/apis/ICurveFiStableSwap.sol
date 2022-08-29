@@ -10,4 +10,6 @@ interface ICurveFiStableSwap {
     external;
 
   function coins(uint256 i) external view returns (address);
+
+  function balances(uint256 i) external view returns (uint256);
 }

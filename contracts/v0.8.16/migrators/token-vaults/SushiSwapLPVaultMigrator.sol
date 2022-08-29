@@ -10,8 +10,9 @@ import "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 
 import "../../../../lib/solmate/src/utils/SafeTransferLib.sol";
 import "../../../../lib/solmate/src/utils/FixedPointMathLib.sol";
-import "../../interfaces/IMigrator.sol";
 import "../../interfaces/apis/IUniswapV2Router02.sol";
+import "../../interfaces/apis/IQuoter.sol";
+import "../../interfaces/IMigrator.sol";
 import "../../interfaces/ILp.sol";
 import "../../interfaces/IWETH9.sol";
 
@@ -33,6 +34,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   IUniswapV2Router02 public sushiSwapRouter;
   IV3SwapRouter public uniswapRouter;
 
+  IQuoter public quoter;
+
   mapping(address => bool) public tokenVaultOK;
 
   /* ========== EVENTS ========== */
@@ -53,7 +56,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     uint256 _govLPTokenVaultFeeRate,
     uint256 _treasuryFeeRate,
     IUniswapV2Router02 _sushiSwapRouter,
-    IV3SwapRouter _uniswapRouter
+    IV3SwapRouter _uniswapRouter,
+    IQuoter _quoter
   ) {
     if (govLPTokenVaultFeeRate + treasuryFeeRate >= 1e18) {
       revert SushiSwapLPVaultMigrator_InvalidFeeRate();
@@ -66,6 +70,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
     sushiSwapRouter = _sushiSwapRouter;
     uniswapRouter = _uniswapRouter;
+
+    quoter = _quoter;
   }
 
   /* ========== MODIFIERS ========== */

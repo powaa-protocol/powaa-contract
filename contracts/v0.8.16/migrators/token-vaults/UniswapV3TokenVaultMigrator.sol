@@ -11,6 +11,8 @@ import "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 
 import "../../../../lib/solmate/src/utils/SafeTransferLib.sol";
 import "../../../../lib/solmate/src/utils/FixedPointMathLib.sol";
+
+import "../../interfaces/apis/IQuoter.sol";
 import "../../interfaces/IMigrator.sol";
 import "../../interfaces/IWETH9.sol";
 
@@ -29,6 +31,7 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   address public treasury;
   address public govLPTokenVault;
   IV3SwapRouter public router;
+  IQuoter public quoter;
 
   mapping(address => bool) public tokenVaultOK;
 
@@ -50,7 +53,8 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     address _govLPTokenVault,
     uint256 _govLPTokenVaultFeeRate,
     uint256 _treasuryFeeRate,
-    IV3SwapRouter _router
+    IV3SwapRouter _router,
+    IQuoter _quoter
   ) {
     if (govLPTokenVaultFeeRate + treasuryFeeRate >= 1e18) {
       revert UniswapV3TokenVaultMigrator_InvalidFeeRate();
@@ -61,6 +65,8 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
     treasuryFeeRate = _treasuryFeeRate;
     router = _router;
+
+    quoter = _quoter;
   }
 
   /* ========== MODIFIERS ========== */

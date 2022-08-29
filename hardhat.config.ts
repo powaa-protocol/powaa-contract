@@ -17,7 +17,18 @@ const chainIds = {
   mainnet: 1,
   rinkeby: 4,
   ropsten: 3,
+  pownet: 10001,
 };
+
+const devPrivateKey: string | undefined = process.env.DEPLOYER_DEV_PRIVATE_KEY;
+if (!devPrivateKey) {
+  throw new Error("Please set your DEPLOYER_DEV_PRIVATE_KEY in a .env file");
+}
+
+const mainnetForkRPC: string | undefined = process.env.MAINNET_FORK_RPC_URL;
+if (!mainnetForkRPC) {
+  throw new Error("Please set your MAINNET_FORK_RPC_URL in a .env file");
+}
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -33,8 +44,10 @@ module.exports = {
       timeout: 1800000,
       accounts: [],
     },
-    devnet: {
-      url: "http://localhost:5000",
+    mainnetfork: {
+      accounts: [devPrivateKey as string],
+      chainId: chainIds["mainnet"],
+      url: mainnetForkRPC,
     },
   },
   namedAccounts: {

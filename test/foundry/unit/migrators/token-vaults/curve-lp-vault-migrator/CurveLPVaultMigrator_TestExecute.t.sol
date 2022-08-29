@@ -63,13 +63,13 @@ contract CurveLPVaultMigrator_TestExecute is CurveLPVaultMigratorBaseTest {
       1 ether
     );
 
-    vm.prank(tokenVaultSteth);
+    vm.prank(TOKEN_VAULT_STETH);
     migrator.execute(abi.encode(address(fakeStethLpToken), uint24(0)));
 
     assertEq(0, MockERC20(fakeStethLpToken).balanceOf(address(migrator)));
-    assertEq(8 ether, address(tokenVaultSteth).balance);
-    assertEq(1 ether, address(govLPTokenVault).balance);
-    assertEq(1 ether, address(treasury).balance);
+    assertEq(8 ether, address(TOKEN_VAULT_STETH).balance);
+    assertEq(1 ether, address(GOV_LP_TOKEN_VAULT).balance);
+    assertEq(1 ether, address(TREASURY).balance);
   }
 
   function test_WhenCallWithWhitelistedContract_ToMigrate3Pool() external {
@@ -89,13 +89,13 @@ contract CurveLPVaultMigrator_TestExecute is CurveLPVaultMigratorBaseTest {
       1 ether
     );
 
-    vm.prank(tokenVault3Pool);
+    vm.prank(TOKEN_VAULT_3POOL);
     migrator.execute(abi.encode(address(fake3PoolLpToken), uint24(0)));
 
     assertEq(0, MockERC20(fake3PoolLpToken).balanceOf(address(migrator)));
-    assertEq(8 ether, address(tokenVault3Pool).balance);
-    assertEq(1 ether, address(govLPTokenVault).balance);
-    assertEq(1 ether, address(treasury).balance);
+    assertEq(8 ether, address(TOKEN_VAULT_3POOL).balance);
+    assertEq(1 ether, address(GOV_LP_TOKEN_VAULT).balance);
+    assertEq(1 ether, address(TREASURY).balance);
   }
 
   function test_WhenCallWithWhitelistedContract_ToMigrateTriCrypto2() external {
@@ -115,13 +115,13 @@ contract CurveLPVaultMigrator_TestExecute is CurveLPVaultMigratorBaseTest {
       1 ether
     );
 
-    vm.prank(tokenVaultTriCrypto2);
+    vm.prank(TOKEN_VAULT_TRICRYPTO2);
     migrator.execute(abi.encode(address(fakeTriCrypto2LpToken), uint24(0)));
 
     assertEq(0, MockERC20(fakeTriCrypto2LpToken).balanceOf(address(migrator)));
-    assertEq(8 ether, address(tokenVaultTriCrypto2).balance);
-    assertEq(1 ether, address(govLPTokenVault).balance);
-    assertEq(1 ether, address(treasury).balance);
+    assertEq(8 ether, address(TOKEN_VAULT_TRICRYPTO2).balance);
+    assertEq(1 ether, address(GOV_LP_TOKEN_VAULT).balance);
+    assertEq(1 ether, address(TREASURY).balance);
   }
 
   function test_WhenCallWithWhitelistedContract_ToMigrateAllCurvePools()
@@ -171,22 +171,22 @@ contract CurveLPVaultMigrator_TestExecute is CurveLPVaultMigratorBaseTest {
       1 ether
     );
 
-    vm.prank(tokenVaultSteth);
+    vm.prank(TOKEN_VAULT_STETH);
     migrator.execute(abi.encode(address(fakeStethLpToken), uint24(0)));
 
-    vm.prank(tokenVault3Pool);
+    vm.prank(TOKEN_VAULT_3POOL);
     migrator.execute(abi.encode(address(fake3PoolLpToken), uint24(0)));
 
-    vm.prank(tokenVaultTriCrypto2);
+    vm.prank(TOKEN_VAULT_TRICRYPTO2);
     migrator.execute(abi.encode(address(fakeTriCrypto2LpToken), uint24(0)));
 
     assertEq(0, MockERC20(fakeStethLpToken).balanceOf(address(migrator)));
     assertEq(0, MockERC20(fake3PoolLpToken).balanceOf(address(migrator)));
     assertEq(0, MockERC20(fakeTriCrypto2LpToken).balanceOf(address(migrator)));
-    assertEq(8 ether, address(tokenVaultSteth).balance);
-    assertEq(8 ether, address(tokenVault3Pool).balance);
-    assertEq(8 ether, address(tokenVaultTriCrypto2).balance);
-    assertEq(3 ether, address(govLPTokenVault).balance);
-    assertEq(3 ether, address(treasury).balance);
+    assertEq(8 ether, address(TOKEN_VAULT_STETH).balance);
+    assertEq(8 ether, address(TOKEN_VAULT_3POOL).balance);
+    assertEq(8 ether, address(TOKEN_VAULT_TRICRYPTO2).balance);
+    assertEq(3 ether, address(GOV_LP_TOKEN_VAULT).balance);
+    assertEq(3 ether, address(TREASURY).balance);
   }
 }

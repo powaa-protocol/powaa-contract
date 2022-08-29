@@ -18,9 +18,12 @@ import "../../../../../../contracts/v0.8.16/interfaces/apis/ICurveFiStableSwap.s
 abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
   CurveLPVaultMigrator internal migrator;
 
-  address internal constant tokenVaultSteth = address(77777);
-  address internal constant tokenVault3Pool = address(88888);
-  address internal constant tokenVaultTriCrypto2 = address(99999);
+  address internal constant TREASURY = address(12345);
+  address internal constant GOV_LP_TOKEN_VAULT = address(54321);
+
+  address internal constant TOKEN_VAULT_STETH = address(77777);
+  address internal constant TOKEN_VAULT_3POOL = address(88888);
+  address internal constant TOKEN_VAULT_TRICRYPTO2 = address(99999);
 
   MockCurveLpToken internal fakeStethLpToken;
   MockCurveLpToken internal fake3PoolLpToken;
@@ -33,9 +36,6 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
 
   MockERC20 internal mockBaseToken;
   MockETHLpToken internal mockLpToken;
-
-  address internal constant treasury = address(12345);
-  address internal constant govLPTokenVault = address(54321);
 
   address public constant WETH9 =
     address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
@@ -75,9 +75,9 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
       exchangeRates
     );
 
-    migrator.whitelistTokenVault(tokenVaultSteth, true);
+    migrator.whitelistTokenVault(TOKEN_VAULT_STETH, true);
     migrator.mapTokenVaultRouter(
-      tokenVaultSteth,
+      TOKEN_VAULT_STETH,
       address(fakeCurveStethStableSwap),
       2
     );
@@ -108,9 +108,9 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
       exchangeRates
     );
 
-    migrator.whitelistTokenVault(tokenVault3Pool, true);
+    migrator.whitelistTokenVault(TOKEN_VAULT_3POOL, true);
     migrator.mapTokenVaultRouter(
-      tokenVault3Pool,
+      TOKEN_VAULT_3POOL,
       address(fakeCurve3PoolStableSwap),
       3
     );
@@ -142,9 +142,9 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
       exchangeRates
     );
 
-    migrator.whitelistTokenVault(tokenVaultTriCrypto2, true);
+    migrator.whitelistTokenVault(TOKEN_VAULT_TRICRYPTO2, true);
     migrator.mapTokenVaultRouter(
-      tokenVaultTriCrypto2,
+      TOKEN_VAULT_TRICRYPTO2,
       address(fakeCurveTriCrypto2StableSwap),
       3
     );
@@ -163,8 +163,8 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
     uint256 _treasuryFeeRate
   ) internal returns (CurveLPVaultMigrator) {
     CurveLPVaultMigrator _migrator = new CurveLPVaultMigrator(
-      treasury,
-      govLPTokenVault,
+      TREASURY,
+      GOV_LP_TOKEN_VAULT,
       _govLPTokenVaultFeeRate,
       _treasuryFeeRate,
       IV3SwapRouter(address(fakeUniswapRouter))

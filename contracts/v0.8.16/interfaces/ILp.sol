@@ -8,4 +8,13 @@ interface ILp {
   function token0() external view returns (IERC20);
 
   function token1() external view returns (IERC20);
+
+  function getReserves()
+    external
+    view
+    returns (
+      uint112,
+      uint112,
+      uint32
+    );
 }

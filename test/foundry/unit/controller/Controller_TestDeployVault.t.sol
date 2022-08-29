@@ -8,7 +8,6 @@ contract Controller_TestDeployVault is ControllerBaseTest {
   address internal constant MOCK_REWARD_DISTRIBUTION = address(10);
   address internal constant MOCK_REWARD_TOKEN = address(11);
   address internal constant MOCK_STAKING_TOKEN = address(12);
-  address internal constant MOCK_WITHDRAWAL_FEE_MODEL = address(13);
   // Controller event
   event Migrate(address[] vaults);
   event SetVault(address vault, bool isGovLPVault);
@@ -19,13 +18,14 @@ contract Controller_TestDeployVault is ControllerBaseTest {
     super.setUp();
   }
 
-  function _deployVault(address _stakingToken, bool _isGovLPVault)
-    internal
-    returns (address)
-  {
+  function _deployVault(
+    address _stakingToken,
+    address _impl,
+    bool _isGovLPVault
+  ) internal returns (address) {
     // Vault can be deterministically get using staking token as a salt
     address deterministicAddress = controller.getDeterministicVault(
-      address(mockTokenVaultImpl),
+      _impl,
       _stakingToken
     );
 
@@ -35,12 +35,10 @@ contract Controller_TestDeployVault is ControllerBaseTest {
     emit SetVault(deterministicAddress, _isGovLPVault);
 
     controller.deployDeterministicVault(
-      address(mockTokenVaultImpl),
+      _impl,
       MOCK_REWARD_DISTRIBUTION,
       MOCK_REWARD_TOKEN,
-      _stakingToken,
-      MOCK_WITHDRAWAL_FEE_MODEL,
-      _isGovLPVault
+      _stakingToken
     );
 
     return deterministicAddress;
@@ -54,9 +52,7 @@ contract Controller_TestDeployVault is ControllerBaseTest {
       address(mockTokenVaultImpl),
       MOCK_REWARD_DISTRIBUTION,
       MOCK_REWARD_TOKEN,
-      MOCK_STAKING_TOKEN,
-      MOCK_WITHDRAWAL_FEE_MODEL,
-      false
+      MOCK_STAKING_TOKEN
     );
 
     vm.stopPrank();
@@ -64,7 +60,11 @@ contract Controller_TestDeployVault is ControllerBaseTest {
 
   function test_WhenSuccessFullyDeployedVault_WithTokenVault() external {
     // Vault can be deterministically get using staking token as a salt
-    address deterministicAddress = _deployVault(MOCK_STAKING_TOKEN, false);
+    address deterministicAddress = _deployVault(
+      MOCK_STAKING_TOKEN,
+      address(mockTokenVaultImpl),
+      false
+    );
 
     // Storage of Controller should be correctly updated
     assertEq(controller.registeredVaults(deterministicAddress), true);
@@ -94,12 +94,6 @@ contract Controller_TestDeployVault is ControllerBaseTest {
     assertEq(
       MockTokenVault(payable(deterministicAddress)).controller(),
       address(controller)
-    );
-    assertEq(
-      address(
-        MockTokenVault(payable(deterministicAddress)).withdrawalFeeModel()
-      ),
-      MOCK_WITHDRAWAL_FEE_MODEL
     );
     assertEq(
       MockTokenVault(payable(deterministicAddress)).isGovLpVault(),
@@ -111,7 +105,11 @@ contract Controller_TestDeployVault is ControllerBaseTest {
     address _stakingToken
   ) external {
     // Vault can be deterministically get using staking token as a salt
-    address deterministicAddress = _deployVault(_stakingToken, false);
+    address deterministicAddress = _deployVault(
+      _stakingToken,
+      address(mockTokenVaultImpl),
+      false
+    );
 
     // Storage of Controller should be correctly updated
     assertEq(controller.registeredVaults(deterministicAddress), true);
@@ -143,12 +141,6 @@ contract Controller_TestDeployVault is ControllerBaseTest {
       address(controller)
     );
     assertEq(
-      address(
-        MockTokenVault(payable(deterministicAddress)).withdrawalFeeModel()
-      ),
-      MOCK_WITHDRAWAL_FEE_MODEL
-    );
-    assertEq(
       MockTokenVault(payable(deterministicAddress)).isGovLpVault(),
       false
     );
@@ -156,7 +148,11 @@ contract Controller_TestDeployVault is ControllerBaseTest {
 
   function test_WhenSuccessFullyDeployedVault_WithGovLPVault() external {
     // Vault can be deterministically get using staking token as a salt
-    address deterministicAddress = _deployVault(MOCK_STAKING_TOKEN, true);
+    address deterministicAddress = _deployVault(
+      MOCK_STAKING_TOKEN,
+      address(mockGovLPVaultImpl),
+      true
+    );
 
     // Storage of Controller should be correctly updated
     assertEq(controller.registeredVaults(deterministicAddress), true);
@@ -165,7 +161,7 @@ contract Controller_TestDeployVault is ControllerBaseTest {
     // Storage of a cloned instance should be correctly updated
     assertEq(
       address(MockTokenVault(payable(deterministicAddress)).masterContract()),
-      address(mockTokenVaultImpl)
+      address(mockGovLPVaultImpl)
     );
     assertEq(
       MockTokenVault(payable(deterministicAddress)).masterContractOwner(),
@@ -188,12 +184,6 @@ contract Controller_TestDeployVault is ControllerBaseTest {
       address(controller)
     );
     assertEq(
-      address(
-        MockTokenVault(payable(deterministicAddress)).withdrawalFeeModel()
-      ),
-      MOCK_WITHDRAWAL_FEE_MODEL
-    );
-    assertEq(
       MockTokenVault(payable(deterministicAddress)).isGovLpVault(),
       true
     );
@@ -203,7 +193,11 @@ contract Controller_TestDeployVault is ControllerBaseTest {
     address _stakingToken
   ) external {
     // Vault can be deterministically get using staking token as a salt
-    address deterministicAddress = _deployVault(_stakingToken, true);
+    address deterministicAddress = _deployVault(
+      _stakingToken,
+      address(mockGovLPVaultImpl),
+      true
+    );
 
     // Storage of Controller should be correctly updated
     assertEq(controller.registeredVaults(deterministicAddress), true);
@@ -212,7 +206,7 @@ contract Controller_TestDeployVault is ControllerBaseTest {
     // Storage of a cloned instance should be correctly updated
     assertEq(
       address(MockTokenVault(payable(deterministicAddress)).masterContract()),
-      address(mockTokenVaultImpl)
+      address(mockGovLPVaultImpl)
     );
     assertEq(
       MockTokenVault(payable(deterministicAddress)).masterContractOwner(),
@@ -233,12 +227,6 @@ contract Controller_TestDeployVault is ControllerBaseTest {
     assertEq(
       MockTokenVault(payable(deterministicAddress)).controller(),
       address(controller)
-    );
-    assertEq(
-      address(
-        MockTokenVault(payable(deterministicAddress)).withdrawalFeeModel()
-      ),
-      MOCK_WITHDRAWAL_FEE_MODEL
     );
     assertEq(
       MockTokenVault(payable(deterministicAddress)).isGovLpVault(),

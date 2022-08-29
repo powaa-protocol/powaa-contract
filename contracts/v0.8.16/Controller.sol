@@ -5,11 +5,15 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "../../lib/solmate/src/utils/SafeTransferLib.sol";
+import "../../lib/solmate/src/utils/FixedPointMathLib.sol";
 import "./interfaces/ITokenVault.sol";
 
 contract Controller is Ownable {
   using Address for address;
   using Clones for address;
+  using SafeTransferLib for address;
+  using FixedPointMathLib for uint256;
 
   /* ========== STATE VARIABLES ========== */
   address[] public tokenVaults;
@@ -20,6 +24,7 @@ contract Controller is Ownable {
   event Migrate(address[] vaults);
   event SetVault(address vault, bool isGovLPVault);
   event NewVault(address instance);
+  event TransferFee(address beneficiary, uint256 fee);
 
   /* ========== ERRORS ========== */
   error Controller_NoVaults();
@@ -28,7 +33,7 @@ contract Controller is Ownable {
   /* ========== VIEWS ========== */
 
   function getDeterministicVault(address implementation, address _rewardsToken)
-    public
+    external
     view
     returns (address predicted)
   {
@@ -55,17 +60,13 @@ contract Controller is Ownable {
     address _rewardsDistribution,
     address _rewardsToken,
     address _stakingToken,
-    address _controller,
-    address _withdrawalFeeModel,
-    bool _isGovLPVault
+    address _controller
   ) private {
     ITokenVault(_instance).initialize(
       _rewardsDistribution,
       _rewardsToken,
       _stakingToken,
-      _controller,
-      _withdrawalFeeModel,
-      _isGovLPVault
+      _controller
     );
 
     emit NewVault(_instance);
@@ -75,9 +76,7 @@ contract Controller is Ownable {
     address _implementation,
     address _rewardsDistribution,
     address _rewardsToken,
-    address _stakingToken,
-    address _withdrawalFeeModel,
-    bool _isGovLPVault
+    address _stakingToken
   ) external onlyOwner {
     bytes32 salt = keccak256(abi.encodePacked(_stakingToken));
     address clone = _implementation.cloneDeterministic(salt);
@@ -87,15 +86,13 @@ contract Controller is Ownable {
       _rewardsDistribution,
       _rewardsToken,
       _stakingToken,
-      address(this),
-      _withdrawalFeeModel,
-      _isGovLPVault
+      address(this)
     );
 
-    _whitelistVault(clone, _isGovLPVault);
+    _whitelistVault(clone, IBaseTokenVault(clone).isGovLpVault());
   }
 
-  function migrate() external onlyOwner {
+  function migrate() external {
     if (tokenVaults.length == 0) revert Controller_NoVaults();
     if (govLPVault == address(0)) revert Controller_NoGovLPVault();
 
@@ -104,12 +101,22 @@ contract Controller is Ownable {
 
     for (uint256 index = 0; index < vaultLength; index++) {
       _vaults[index] = tokenVaults[index];
+      ITokenVault(tokenVaults[index]).reduceReserve();
       ITokenVault(tokenVaults[index]).migrate();
     }
 
     _vaults[vaultLength] = govLPVault;
     ITokenVault(govLPVault).migrate();
 
+    uint256 executionFee = address(this).balance;
+    if (executionFee > 0) {
+      msg.sender.safeTransferETH(executionFee);
+
+      emit TransferFee(msg.sender, executionFee);
+    }
     emit Migrate(_vaults);
   }
+
+  /// @dev Fallback function to accept ETH.
+  receive() external payable {}
 }

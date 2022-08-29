@@ -12,6 +12,7 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
     UniswapV3TokenVaultMigrator migrator;
     address treasury;
     address govLPTokenVault;
+    address controller;
     MockV3SwapRouter fakeSwapRouter;
     MockTokenVault fakeTokenVault;
     MockERC20 fakeStakingToken;
@@ -19,8 +20,9 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
 
   event Execute(
     uint256 vaultReward,
-    uint256 govLPTokenVaultReward,
-    uint256 treasuryReward
+    uint256 treasuryReward,
+    uint256 controllerReward,
+    uint256 govLPTokenVaultReward
   );
   event WhitelistTokenVault(address tokenVault, bool whitelisted);
 
@@ -46,16 +48,20 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
 
   function _setupUniswapV3TokenVaultMigrator(
     address _treasury,
+    address _controller,
     address _govLPTokenVault,
-    uint256 _govLPTokenVaultFeeRate,
     uint256 _treasuryFeeRate,
+    uint256 _controllerFeeRate,
+    uint256 _govLPTokenVaultFeeRate,
     IV3SwapRouter _router
   ) internal returns (UniswapV3TokenVaultMigrator) {
     UniswapV3TokenVaultMigrator _impl = new UniswapV3TokenVaultMigrator(
       _treasury,
+      _controller,
       _govLPTokenVault,
-      _govLPTokenVaultFeeRate,
       _treasuryFeeRate,
+      _controllerFeeRate,
+      _govLPTokenVaultFeeRate,
       _router
     );
 
@@ -63,22 +69,26 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
   }
 
   function _scaffoldUniswapV3TokenVaultMigratorTestState(
-    uint256 _govLPTokenVaultFeeRate,
-    uint256 _treasuryFeeRate
+    uint256 _treasuryFeeRate,
+    uint256 _controllerFeeRate,
+    uint256 _govLPTokenVaultFeeRate
   ) internal returns (UniswapV3TokenVaultMigratorTestState memory) {
     UniswapV3TokenVaultMigratorTestState memory _state;
 
     _state.treasury = address(1123123);
     _state.govLPTokenVault = address(3213321);
+    _state.controller = address(111);
     _state.fakeSwapRouter = new MockV3SwapRouter();
     _state.fakeTokenVault = new MockTokenVault();
     _state.fakeStakingToken = _setupFakeERC20("Fake Token", "FT");
 
     _state.migrator = _setupUniswapV3TokenVaultMigrator(
       _state.treasury,
+      _state.controller,
       _state.govLPTokenVault,
-      _govLPTokenVaultFeeRate,
       _treasuryFeeRate,
+      _controllerFeeRate,
+      _govLPTokenVaultFeeRate,
       IV3SwapRouter(address(_state.fakeSwapRouter))
     );
 

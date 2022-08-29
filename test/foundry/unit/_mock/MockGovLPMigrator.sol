@@ -16,8 +16,6 @@ contract MockGovLPMigrator is MockContract {
 
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-  mapping(address => uint256) private exchangeRate;
-
   function execute(bytes calldata _data) external {
     address token = abi.decode(_data, (address));
     address baseToken = address(ILp(token).token0()) != address(WETH9)

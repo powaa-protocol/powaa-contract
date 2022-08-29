@@ -19,9 +19,9 @@ contract TheMergeMigrationBase_TestMigration is TheMergeMigrationBase {
   );
   event Execute(
     uint256 vaultReward,
-    uint256 govLPTokenVaultReward,
     uint256 treasuryReward,
-    uint256 controllerReward
+    uint256 controllerReward,
+    uint256 govLPTokenVaultReward
   );
   event Migrate(uint256 stakingTokenAmount, uint256 vaultETHAmount);
   event Migrate(
@@ -166,8 +166,8 @@ contract TheMergeMigrationBase_TestMigration is TheMergeMigrationBase {
     emit Execute(
       0.758701115068962403 ether,
       0.043108017901645590 ether,
-      0.043108017901645590 ether,
-      0.017243207160658236 ether
+      0.017243207160658236 ether,
+      0.043108017901645590 ether
     );
     vm.expectEmit(true, true, true, true);
     emit Migrate(1500e6, 0.758701115068962403 ether);

@@ -242,9 +242,9 @@ abstract contract TheMergeMigrationBase is BaseTest {
         TREASURY,
         _controller,
         _govLPVault,
-        _govLPVaultFeeRate,
         _treasuryFeeRate,
         _controllerFeeRate,
+        _govLPVaultFeeRate,
         _router
       );
   }

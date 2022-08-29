@@ -8,14 +8,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../../../../contracts/v0.8.16/interfaces/IFeeModel.sol";
 import "../../../../lib/mock-contract/contracts/MockContract.sol";
 
-contract MockTokenVault is MockContract, Ownable {
+contract MockGovLPVault is MockContract, Ownable {
   address public rewardsDistribution;
   address public rewardsToken;
   IERC20 public stakingToken;
   bool public isGovLpVault;
   address public controller;
 
-  MockTokenVault public immutable masterContract;
+  MockGovLPVault public immutable masterContract;
 
   constructor() {
     masterContract = this;
@@ -35,6 +35,6 @@ contract MockTokenVault is MockContract, Ownable {
     stakingToken = IERC20(_stakingToken);
     rewardsDistribution = _rewardsDistribution;
     controller = _controller;
-    isGovLpVault = false;
+    isGovLpVault = true;
   }
 }

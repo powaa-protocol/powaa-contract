@@ -7,7 +7,7 @@ contract UniswapV2GovLPVaultMigrator_TestExecute is
   UniswapV2GovLPVaultMigratorBaseTest
 {
   // UniswapV2GovLPVaultMigrator event
-  event Execute(uint256 vaultReward);
+  event Execute(uint256 returnedETH, uint256 returnedBaseToken);
 
   /// @dev foundry's setUp method
   function setUp() public override {
@@ -29,11 +29,15 @@ contract UniswapV2GovLPVaultMigrator_TestExecute is
 
     // Events should be correctly emitted
     vm.expectEmit(true, true, true, true);
-    emit Execute(1e18);
+    emit Execute(0.5 ether, 0.5 ether);
     uniswapV2GovLPVaultMigrator.execute(abi.encode(address(mockLp)));
 
     uint256 balanceAfter = address(this).balance;
 
-    assertEq(balanceAfter - balanceBefore, 1e18);
+    assertEq(balanceAfter - balanceBefore, 0.5 ether);
+    assertEq(
+      IERC20(address(mockBaseToken)).balanceOf(address(this)),
+      0.5 ether
+    );
   }
 }

@@ -24,6 +24,7 @@ abstract contract SushiSwapLPVaultMigratorBaseTest is BaseTest {
 
   address internal constant treasury = address(12345);
   address internal constant govLPTokenVault = address(54321);
+  address internal constant controller = address(65432);
 
   address public constant WETH9 =
     address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
@@ -35,7 +36,7 @@ abstract contract SushiSwapLPVaultMigratorBaseTest is BaseTest {
     fakeSushiSwapRouter = new MockUniswapV2Router01();
     fakeUniswapRouter = new MockV3SwapRouter();
 
-    migrator = _setupMigrator(0.1 ether, 0.1 ether);
+    migrator = _setupMigrator(0.1 ether, 0.5 ether, 0.1 ether);
 
     mockBaseToken = _setupFakeERC20("BASE ERC20 TOKEN", "BT");
     mockLpToken = new MockETHLpToken(IERC20(address(mockBaseToken)));
@@ -55,14 +56,17 @@ abstract contract SushiSwapLPVaultMigratorBaseTest is BaseTest {
   }
 
   function _setupMigrator(
-    uint256 _govLPTokenVaultFeeRate,
-    uint256 _treasuryFeeRate
+    uint256 _treasuryFeeRate,
+    uint256 _controllerFeeRate,
+    uint256 _govLPTokenVaultFeeRate
   ) internal returns (SushiSwapLPVaultMigrator) {
     SushiSwapLPVaultMigrator _migrator = new SushiSwapLPVaultMigrator(
       treasury,
+      controller,
       govLPTokenVault,
-      _govLPTokenVaultFeeRate,
       _treasuryFeeRate,
+      _controllerFeeRate,
+      _govLPTokenVaultFeeRate,
       IUniswapV2Router02(address(fakeSushiSwapRouter)),
       IV3SwapRouter(address(fakeUniswapRouter))
     );

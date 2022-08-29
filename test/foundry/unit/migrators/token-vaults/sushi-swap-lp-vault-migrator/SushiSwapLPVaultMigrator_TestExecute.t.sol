@@ -17,8 +17,9 @@ contract SushiSwapLPVaultMigrator_TestExecute is
 
   event Execute(
     uint256 vaultReward,
-    uint256 govLPTokenVaultReward,
-    uint256 treasuryReward
+    uint256 treasuryReward,
+    uint256 controllerReward,
+    uint256 govLPTokenVaultReward
   );
   // more than enough amount
   uint256 public constant INITIAL_AMOUNT = 100000000000000 ether;
@@ -53,15 +54,16 @@ contract SushiSwapLPVaultMigrator_TestExecute is
 
     // Events should be correctly emitted
     vm.expectEmit(true, true, true, true);
-    emit Execute(8 ether, 1 ether, 1 ether);
+    emit Execute(3 ether, 1 ether, 5 ether, 1 ether);
 
     migrator.execute(abi.encode(address(mockLpToken), uint24(0)));
 
     uint256 balanceAfter = address(this).balance;
 
-    assertEq(8 ether, balanceAfter.sub(balanceBefore));
+    assertEq(3 ether, balanceAfter.sub(balanceBefore));
     assertEq(1 ether, address(treasury).balance);
     assertEq(1 ether, address(govLPTokenVault).balance);
+    assertEq(5 ether, address(controller).balance);
 
     assertEq(0, mockLpToken.balanceOf(address(migrator)));
     assertEq(0, mockBaseToken.balanceOf(address(migrator)));
@@ -73,7 +75,8 @@ contract SushiSwapLPVaultMigrator_TestExecute is
     uint256 lpTokenToEthRate,
     uint256 baseTokenToEthRate,
     uint256 govLPTokenVaultFeeRate,
-    uint256 treasuryFeeRate
+    uint256 treasuryFeeRate,
+    uint256 controllerFeeRate
   ) external {
     amount = bound(amount, 1 ether, 10 ether);
     lpTokenToBaseRate = bound(lpTokenToBaseRate, 1 ether, 100 ether);
@@ -87,8 +90,17 @@ contract SushiSwapLPVaultMigrator_TestExecute is
       1,
       uint256(0.99 ether).sub(govLPTokenVaultFeeRate)
     );
+    controllerFeeRate = bound(
+      controllerFeeRate,
+      1,
+      uint256(0.99 ether).sub(govLPTokenVaultFeeRate).sub(treasuryFeeRate)
+    );
 
-    migrator = _setupMigrator(govLPTokenVaultFeeRate, treasuryFeeRate);
+    migrator = _setupMigrator(
+      treasuryFeeRate,
+      controllerFeeRate,
+      govLPTokenVaultFeeRate
+    );
     fakeSushiSwapRouter.mockSetLpRemoveLiquidityRate(
       address(mockLpToken),
       lpTokenToBaseRate,
@@ -112,13 +124,17 @@ contract SushiSwapLPVaultMigrator_TestExecute is
 
     uint256 govLPTokenVaultFee = govLPTokenVaultFeeRate.mulWadDown(totalNative);
     uint256 treasuryFee = treasuryFeeRate.mulWadDown(totalNative);
-    uint256 vaultReward = totalNative - govLPTokenVaultFee - treasuryFee;
+    uint256 controllerFee = controllerFeeRate.mulWadDown(totalNative);
+    uint256 vaultReward = totalNative -
+      govLPTokenVaultFee -
+      treasuryFee -
+      controllerFee;
 
     uint256 balanceBefore = address(this).balance;
 
     // Events should be correctly emitted
     vm.expectEmit(true, true, true, true);
-    emit Execute(vaultReward, govLPTokenVaultFee, treasuryFee);
+    emit Execute(vaultReward, treasuryFee, controllerFee, govLPTokenVaultFee);
 
     migrator.execute(abi.encode(address(mockLpToken), uint24(0)));
     uint256 balanceAfter = address(this).balance;
@@ -126,6 +142,7 @@ contract SushiSwapLPVaultMigrator_TestExecute is
     assertEq(vaultReward, balanceAfter.sub(balanceBefore));
     assertEq(treasuryFee, address(treasury).balance);
     assertEq(govLPTokenVaultFee, address(govLPTokenVault).balance);
+    assertEq(controllerFee, address(controller).balance);
 
     assertEq(0, mockLpToken.balanceOf(address(migrator)));
     assertEq(0, mockBaseToken.balanceOf(address(migrator)));

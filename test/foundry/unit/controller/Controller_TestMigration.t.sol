@@ -10,29 +10,28 @@ contract Controller_TestMigration is ControllerBaseTest {
 
   // Controller event
   event Migrate(address[] vaults);
+  event TransferFee(address beneficiary, uint256 fee);
 
   /// @dev foundry's setUp method
   function setUp() public override {
     super.setUp();
   }
 
-  function _deployVault(address _stakingToken, bool _isGovLPVault)
+  function _deployVault(address _stakingToken, address _impl)
     internal
     returns (address)
   {
-    // Vault can be deterministically get using reward token as a salt
+    // Vault can be deterministically get using staking token as a salt
     address deterministicAddress = controller.getDeterministicVault(
-      address(mockTokenVaultImpl),
+      _impl,
       _stakingToken
     );
 
     controller.deployDeterministicVault(
-      address(mockTokenVaultImpl),
+      _impl,
       MOCK_REWARD_DISTRIBUTION,
       MOCK_REWARD_TOKEN,
-      _stakingToken,
-      MOCK_WITHDRAWAL_FEE_MODEL,
-      _isGovLPVault
+      _stakingToken
     );
 
     return deterministicAddress;
@@ -42,7 +41,7 @@ contract Controller_TestMigration is ControllerBaseTest {
     address stakingToken = address(13);
 
     // Deploy only token vault
-    _deployVault(stakingToken, false);
+    _deployVault(stakingToken, address(mockTokenVaultImpl));
 
     // Migration requires to have both token vault and gov LP vault
     vm.expectRevert(abi.encodeWithSignature("Controller_NoGovLPVault()"));
@@ -54,23 +53,24 @@ contract Controller_TestMigration is ControllerBaseTest {
     controller.migrate();
   }
 
-  function test_WhenMigrationVault_WhenTheCallerIsNotOwner() external {
-    vm.startPrank(ALICE);
-    vm.expectRevert(abi.encodePacked("Ownable: caller is not the owner"));
-    controller.migrate();
-    vm.stopPrank();
-  }
-
-  function test_WhenMigrationVault_WhenAllParamsAreCorrect() external {
+  function test_WhenMigrationVault_WhenAllParamsAreCorrect_WithExecutionFeeEqZero()
+    external
+  {
     address stakingToken = address(13);
     address govLPToken = address(14);
     address[] memory expectedMigratedVaults = new address[](2);
 
     // Deploy a token vault
-    expectedMigratedVaults[0] = _deployVault(stakingToken, false);
+    expectedMigratedVaults[0] = _deployVault(
+      stakingToken,
+      address(mockTokenVaultImpl)
+    );
 
     // Deploy a gov LP vault
-    expectedMigratedVaults[1] = _deployVault(govLPToken, true);
+    expectedMigratedVaults[1] = _deployVault(
+      govLPToken,
+      address(mockGovLPVaultImpl)
+    );
 
     // Events should be correctly emitted
     vm.expectEmit(true, true, true, true);
@@ -80,11 +80,44 @@ contract Controller_TestMigration is ControllerBaseTest {
     controller.migrate();
   }
 
+  function test_WhenMigrationVault_WhenAllParamsAreCorrect_WithExecutionFeeGtZero()
+    external
+  {
+    address stakingToken = address(13);
+    address govLPToken = address(14);
+    address[] memory expectedMigratedVaults = new address[](2);
+
+    // Deploy a token vault
+    expectedMigratedVaults[0] = _deployVault(
+      stakingToken,
+      address(mockTokenVaultImpl)
+    );
+
+    // Deploy a gov LP vault
+    expectedMigratedVaults[1] = _deployVault(
+      govLPToken,
+      address(mockGovLPVaultImpl)
+    );
+
+    // Events should be correctly emitted
+    vm.expectEmit(true, true, true, true);
+    emit TransferFee(address(this), 1000 ether);
+    vm.expectEmit(true, true, true, true);
+    emit Migrate(expectedMigratedVaults);
+
+    vm.deal(address(controller), 1000 ether);
+
+    // Migration requires to have both token vault and gov LP vault
+    controller.migrate();
+  }
+
   function test_WhenMigrationVault_WhenAllParamsAreCorrect_WithFuzzyLengthOfTokenVaults(
-    uint256 tokenVaultsLength
+    uint256 tokenVaultsLength,
+    uint256 executionFee
   ) external {
     // token vaults length is set between 1 and 100
     tokenVaultsLength = bound(tokenVaultsLength, 1, 100);
+    executionFee = bound(executionFee, 1, 1000 ether);
     uint256 startStakingToken = 13;
     address govLPToken = address(
       uint160(startStakingToken + tokenVaultsLength)
@@ -96,18 +129,25 @@ contract Controller_TestMigration is ControllerBaseTest {
     // Deploy a token vaults
     for (uint256 i = 0; i < tokenVaultsLength; i++) {
       address stakingToken = address(uint160(startStakingToken + i));
-      expectedMigratedVaults[i] = _deployVault(stakingToken, false);
+      expectedMigratedVaults[i] = _deployVault(
+        stakingToken,
+        address(mockTokenVaultImpl)
+      );
     }
 
     // Deploy a gov LP vault
     expectedMigratedVaults[expectedMigratedVaults.length - 1] = _deployVault(
       govLPToken,
-      true
+      address(mockGovLPVaultImpl)
     );
 
     // Events should be correctly emitted
     vm.expectEmit(true, true, true, true);
+    emit TransferFee(address(this), executionFee);
+    vm.expectEmit(true, true, true, true);
     emit Migrate(expectedMigratedVaults);
+
+    vm.deal(address(controller), executionFee);
 
     // Migration requires to have both token vault and gov LP vault
     controller.migrate();

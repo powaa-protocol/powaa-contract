@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import "../_base/BaseTest.sol";
-import "../_mock/MockERC20.sol";
-import "../_mock/MockETHLpToken.sol";
-import "../_mock/MockUniswapV2Router01.sol";
+import "../../_base/BaseTest.sol";
+import "../../_mock/MockERC20.sol";
+import "../../_mock/MockETHLpToken.sol";
+import "../../_mock/MockUniswapV2Router01.sol";
 import "mock-contract/MockContract.sol";
-import "../../../../contracts/v0.8.16/interfaces/apis/IUniswapV2Router02.sol";
-import "../../../../contracts/v0.8.16/migrators/gov-lp-vaults/UniswapV2GovLPVaultMigrator.sol";
-import "../../../../lib/solmate/src/utils/SafeTransferLib.sol";
+import "../../../../../contracts/v0.8.16/interfaces/apis/IUniswapV2Router02.sol";
+import "../../../../../contracts/v0.8.16/migrators/gov-lp-vaults/UniswapV2GovLPVaultMigrator.sol";
+import "../../../../../lib/solmate/src/utils/SafeTransferLib.sol";
 
 /// @title An abstraction of the UniswapV2GovLPVaultMigrator Testing contract, containing a scaffolding method for creating the fixture
 abstract contract UniswapV2GovLPVaultMigratorBaseTest is BaseTest {

@@ -29,6 +29,7 @@ contract Controller is Ownable {
   /* ========== ERRORS ========== */
   error Controller_NoVaults();
   error Controller_NoGovLPVault();
+  error Controller_NonRegisterVault();
 
   /* ========== VIEWS ========== */
 
@@ -53,6 +54,12 @@ contract Controller is Ownable {
     registeredVaults[_vault] = true;
 
     emit SetVault(_vault, _isGovLPVault);
+  }
+
+  function whitelistLPVault(address _vault) external onlyOwner {
+    if (!registeredVaults[_vault]) revert Controller_NonRegisterVault();
+
+    _whitelistVault(_vault, true);
   }
 
   function _initVaultAndEmit(

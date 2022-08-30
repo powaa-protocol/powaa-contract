@@ -114,7 +114,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       : address(ILp(lpToken).token1());
 
     uint256 liquidity = IERC20(lpToken).balanceOf(address(this));
-    IERC20(lpToken).approve(address(sushiSwapRouter), liquidity);
+    IERC20(lpToken).safeApprove(address(sushiSwapRouter), liquidity);
     sushiSwapRouter.removeLiquidityETH(
       baseToken,
       liquidity,
@@ -125,8 +125,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     );
 
     uint256 swapAmount = IERC20(baseToken).balanceOf(address(this));
-    IERC20(baseToken).approve(address(uniswapRouter), swapAmount);
-
+    IERC20(baseToken).safeApprove(address(uniswapRouter), swapAmount);
     IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
       .ExactInputSingleParams({
         tokenIn: baseToken,
@@ -137,10 +136,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
         amountOutMinimum: 0,
         sqrtPriceLimitX96: 0
       });
-
     uniswapRouter.exactInputSingle(params);
     _unwrapWETH(address(this));
-
     uint256 govLPTokenVaultFee = govLPTokenVaultFeeRate.mulWadDown(
       address(this).balance
     );

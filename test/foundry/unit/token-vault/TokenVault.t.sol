@@ -86,22 +86,39 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     fixture.tokenVault.migrate();
   }
 
+  function testInitialize_WhenCallInitializeMultipleTimes() external {
+    TokenVault vault = _setupTokenVault(
+      address(fixture.rewardDistributor),
+      address(fixture.fakeRewardToken),
+      address(fixture.fakeStakingToken),
+      address(fixture.controller)
+    );
+
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_AlreadyInitialized()"));
+    vault.initialize(
+      address(fixture.rewardDistributor),
+      address(fixture.fakeRewardToken),
+      address(fixture.fakeStakingToken),
+      address(fixture.controller)
+    );
+  }
+
   function testSetRewardsDuration_WhenCallAtProperTime() external {
     vm.expectEmit(true, true, true, true);
-    emit RewardsDurationUpdated(100000000);
-    fixture.tokenVault.setRewardsDuration(100000000);
+    emit RewardsDurationUpdated(1 days);
+    fixture.tokenVault.setRewardsDuration(1 days);
   }
 
   function testSetRewardsDuration_WhenCallWithUnauthorizedAccount() external {
     vm.expectRevert(abi.encodeWithSignature("TokenVault_NotOwner()"));
 
     vm.prank(ALICE);
-    fixture.tokenVault.setRewardsDuration(100000000);
+    fixture.tokenVault.setRewardsDuration(1 days);
   }
 
   function testSetRewardsDuration_WhenCallDuringRewardPeriod() external {
     // reward period will be 100000000 block long
-    fixture.tokenVault.setRewardsDuration(100000000);
+    fixture.tokenVault.setRewardsDuration(1 days);
 
     vm.prank(fixture.rewardDistributor);
     fixture.tokenVault.notifyRewardAmount(10 ether);
@@ -111,11 +128,11 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     vm.expectRevert(
       abi.encodeWithSignature("TokenVault_RewardPeriodMustBeCompleted()")
     );
-    fixture.tokenVault.setRewardsDuration(100000000);
+    fixture.tokenVault.setRewardsDuration(1 days);
   }
 
   function testNotifyRewardAmount_WhenCallBeforeRewardPeriodStart() external {
-    fixture.tokenVault.setRewardsDuration(1 ether);
+    fixture.tokenVault.setRewardsDuration(1 days);
 
     vm.expectEmit(true, true, true, true);
     emit RewardAdded(10 ether);
@@ -123,11 +140,11 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     fixture.tokenVault.notifyRewardAmount(10 ether);
 
     // 10e18 / 1e18
-    assertEq(10, fixture.tokenVault.rewardRate());
+    assertEq(0.00011574074074074 ether, fixture.tokenVault.rewardRate());
     assertEq(uint256(block.timestamp), fixture.tokenVault.lastUpdateTime());
     assertEq(uint256(block.number), fixture.tokenVault.campaignStartBlock());
     assertEq(
-      uint256(block.timestamp).add(1 ether),
+      uint256(block.timestamp).add(1 days),
       fixture.tokenVault.periodFinish()
     );
   }
@@ -135,7 +152,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   function testNotifyRewardAmount_WhenUsingAmountGreaterThanVaultBalance()
     external
   {
-    fixture.tokenVault.setRewardsDuration(1);
+    fixture.tokenVault.setRewardsDuration(1 days);
 
     vm.expectRevert(
       abi.encodeWithSignature("TokenVault_ProvidedRewardTooHigh()")
@@ -145,23 +162,23 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   }
 
   function testNotifyRewardAmount_WhenCallDuringRewardPeriod() external {
-    fixture.tokenVault.setRewardsDuration(1 ether);
+    fixture.tokenVault.setRewardsDuration(1 days);
 
     vm.expectEmit(true, true, true, true);
     emit RewardAdded(10 ether);
     vm.prank(fixture.rewardDistributor);
     fixture.tokenVault.notifyRewardAmount(10 ether);
 
-    // 10e18 / 1e18
-    assertEq(10, fixture.tokenVault.rewardRate());
+    // 10e18 / 86400 = 0.00011574074074074
+    assertEq(0.00011574074074074 ether, fixture.tokenVault.rewardRate());
     assertEq(1, fixture.tokenVault.lastUpdateTime());
     assertEq(1, fixture.tokenVault.campaignStartBlock());
     assertEq(
-      uint256(block.timestamp).add(1 ether),
+      uint256(block.timestamp).add(1 days),
       fixture.tokenVault.periodFinish()
     );
 
-    vm.warp((0.5 ether));
+    vm.warp((0.5 days));
     vm.roll(10000);
 
     vm.expectEmit(true, true, true, true);
@@ -169,15 +186,21 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     vm.prank(fixture.rewardDistributor);
     fixture.tokenVault.notifyRewardAmount(10 ether);
 
-    // (10e18 + (((1e18 + 1) - 0.5e18) * 10)) / 1e18
-    assertEq(15, fixture.tokenVault.rewardRate());
-    assertEq(0.5 ether, fixture.tokenVault.lastUpdateTime());
-    assertEq(10000, fixture.tokenVault.campaignStartBlock());
-    assertEq(1.5 ether, fixture.tokenVault.periodFinish());
+    // (periodFinish - currentTimestamp) * prevRewardRate
+    // (86401 - 43200) * 0.00011574074074074e18 = 5.00011574074070874e18
+    // prevtotalReward = 5.00011574074070874e18
+    // (5.00011574074070874e18 + 10e18) / 86400 = 0.000173612450703017
+    assertEq(fixture.tokenVault.rewardRate(), 0.000173612450703017 ether);
+    assertEq(fixture.tokenVault.lastUpdateTime(), block.timestamp);
+    assertEq(fixture.tokenVault.campaignStartBlock(), 1);
+    assertEq(
+      uint256(block.timestamp).add(1 days),
+      fixture.tokenVault.periodFinish()
+    );
   }
 
   function testRewardPerToken_WhenTotalSupplyIsZero() external {
-    fixture.tokenVault.setRewardsDuration(10000);
+    fixture.tokenVault.setRewardsDuration(1 days);
 
     // Set fee model here
     fixture.tokenVault.setMigrationOption(
@@ -197,19 +220,24 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     fixture.fakeStakingToken.mint(ALICE, STAKE_AMOUNT_1000);
     _simulateStake(ALICE, STAKE_AMOUNT_1000);
 
-    vm.warp(5001);
+    vm.warp((0.5 days));
 
     vm.prank(ALICE);
     fixture.tokenVault.withdraw(STAKE_AMOUNT_1000);
 
     assertEq(0, fixture.tokenVault.totalSupply());
 
-    // (((5001 - 1) * (100000e18 / 10000)) * 1e18) / 1000e18
-    assertEq(50 ether, fixture.tokenVault.rewardPerToken());
+    // 100000e18 / 86400 = 1.157407407407407407e18
+    assertEq(fixture.tokenVault.rewardRate(), 1.157407407407407407 ether);
+
+    // = timeRange * tokenPerSec / totalSupply
+    // = 0 (no reward per token before) + (43200 - 1) * 1.157407407407407407e18 * 1e18 / 1000e18
+    // = 49.998842592592592574e18
+    assertEq(fixture.tokenVault.rewardPerToken(), 49.998842592592592574 ether);
   }
 
   function testRewardPerToken_WhenTotalSupplyIsNotZero() external {
-    fixture.tokenVault.setRewardsDuration(10000);
+    fixture.tokenVault.setRewardsDuration(1 days);
 
     vm.prank(fixture.rewardDistributor);
     fixture.tokenVault.notifyRewardAmount(100000 ether);
@@ -219,23 +247,31 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     assertEq(STAKE_AMOUNT_1000, fixture.tokenVault.totalSupply());
 
-    vm.warp(5001);
+    vm.warp((0.5 days));
 
-    // (((5001 - 1) * (100000e18 / 10000)) * 1e18) / 1000e18
-    assertEq(50 ether, fixture.tokenVault.rewardPerToken());
+    // 100000e18 / 86400 = 1.157407407407407407e18
+    assertEq(fixture.tokenVault.rewardRate(), 1.157407407407407407 ether);
+
+    // = timeRange * tokenPerSec / totalSupply
+    // = 0 (no reward per token before) + (43200 - 1) * 1.157407407407407407e18 * 1e18 / 1000e18
+    // = 49.998842592592592574e18
+    assertEq(fixture.tokenVault.rewardPerToken(), 49.998842592592592574 ether);
 
     fixture.fakeStakingToken.mint(ALICE, STAKE_AMOUNT_1000);
+
+    // Now totalSupply shouldd be updated to 2000
     _simulateStake(ALICE, STAKE_AMOUNT_1000);
 
-    vm.warp(8001);
+    vm.warp((0.8 days));
     assertEq(
       STAKE_AMOUNT_1000.add(STAKE_AMOUNT_1000),
       fixture.tokenVault.totalSupply()
     );
 
-    // additional from previous rewardPerToken()
-    // 50e18 + ((((8001 - 5001) * (100000e18 / 10000)) * 1e18) / 2000e18)
-    assertEq(65 ether, fixture.tokenVault.rewardPerToken());
+    // = timeRange * tokenPerSec / totalSupply
+    // = 49.998842592592592574e18 + ((69120 - 43200) * 1.157407407407407407e18 * 1e18 / 2000e18)
+    // = 49.998842592592592574e18 + 14.999999999999999994 = 64.998842592592592568
+    assertEq(fixture.tokenVault.rewardPerToken(), 64.998842592592592568 ether);
   }
 
   function testStake_WhenStakingIsAllowed() external {
@@ -258,10 +294,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
   function testStake_WhenStakeAfterMigrated() external {
     fixture.fakeStakingToken.mint(address(ALICE), STAKE_AMOUNT_1000);
 
-    vm.expectEmit(true, true, true, true);
-    emit Migrate(uint256(0), uint256(0));
-
-    _simulateMigrate(1, 1, 10000, 0, 1 ether, TREASURY_FEE_RATE);
+    _simulateMigrate(1 days, 1, 10000, 0, 1 ether, TREASURY_FEE_RATE);
 
     vm.startPrank(ALICE);
 
@@ -344,7 +377,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     fixture.fakeStakingToken.mint(ALICE, STAKE_AMOUNT_1000);
     _simulateStake(ALICE, STAKE_AMOUNT_1000);
 
-    _simulateMigrate(1, 1, 10000, 0, 1 ether, TREASURY_FEE_RATE);
+    _simulateMigrate(1 days, 1, 10000, 0, 1 ether, TREASURY_FEE_RATE);
 
     vm.startPrank(ALICE);
 
@@ -427,8 +460,8 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
   function testClaimGov_WhenUserRewardIsAvailableAndUnclaimed() external {
     vm.expectEmit(true, true, true, true);
-    emit RewardsDurationUpdated(1 ether);
-    fixture.tokenVault.setRewardsDuration(1 ether);
+    emit RewardsDurationUpdated(1 days);
+    fixture.tokenVault.setRewardsDuration(1 days);
 
     vm.prank(fixture.rewardDistributor);
     vm.expectEmit(true, true, true, true);
@@ -440,28 +473,32 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     assertEq(STAKE_AMOUNT_1000, fixture.tokenVault.totalSupply());
 
-    vm.warp(5001);
+    vm.warp(0.5 days);
 
-    // 10e18 / 1e18
-    assertEq(10, fixture.tokenVault.rewardRate());
+    // 10e18 / 86400 = 0.00011574074074074
+    assertEq(0.00011574074074074 ether, fixture.tokenVault.rewardRate());
 
-    // (5001 - 1) * 10 * 1e18 / 1000e18
-    assertEq(50, fixture.tokenVault.rewardPerToken());
+    // (43200 - 1) * 0.00011574074074074e18 * 1e18 / 1000e18
+    assertEq(0.004999884259259227 ether, fixture.tokenVault.rewardPerToken());
 
+    // Since Alice has stake 1000, she can claim 1000 * 0.004999884259259227 =
     vm.expectEmit(true, true, true, true);
-    emit RewardPaid(address(ALICE), uint256(50000));
+    emit RewardPaid(address(ALICE), 4.999884259259227 ether);
 
     vm.prank(ALICE);
     fixture.tokenVault.claimGov();
 
-    assertEq(uint256(50000), fixture.fakeRewardToken.balanceOf(ALICE));
+    assertEq(
+      uint256(4.999884259259227 ether),
+      fixture.fakeRewardToken.balanceOf(ALICE)
+    );
     assertEq(0, fixture.tokenVault.rewards(ALICE));
   }
 
   function testClaimGov_WhenThereAreNoRewardToClaim() external {
     vm.expectEmit(true, true, true, true);
-    emit RewardsDurationUpdated(1 ether);
-    fixture.tokenVault.setRewardsDuration(1 ether);
+    emit RewardsDurationUpdated(1 days);
+    fixture.tokenVault.setRewardsDuration(1 days);
 
     vm.prank(fixture.rewardDistributor);
     vm.expectEmit(true, true, true, true);
@@ -480,8 +517,8 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
   function testExit_WhenUserStakedAndAvailableRewardUnclaimed() external {
     vm.expectEmit(true, true, true, true);
-    emit RewardsDurationUpdated(1 ether);
-    fixture.tokenVault.setRewardsDuration(1 ether);
+    emit RewardsDurationUpdated(1 days);
+    fixture.tokenVault.setRewardsDuration(1 days);
 
     vm.prank(fixture.rewardDistributor);
     vm.expectEmit(true, true, true, true);
@@ -504,23 +541,26 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     assertEq(STAKE_AMOUNT_1000, fixture.tokenVault.totalSupply());
 
-    vm.warp(5001);
+    vm.warp(0.5 days);
 
-    // 10e18 / 1e18
-    assertEq(10, fixture.tokenVault.rewardRate());
+    // 10e18 / 86400 = 0.00011574074074074e18
+    assertEq(0.00011574074074074 ether, fixture.tokenVault.rewardRate());
 
-    // (5001 - 1) * 10 * 1e18 / 1000e18
-    assertEq(uint256(50), fixture.tokenVault.rewardPerToken());
+    // (43200 - 1) * 0.00011574074074074e18 * 1e18 / 1000e18
+    assertEq(0.004999884259259227 ether, fixture.tokenVault.rewardPerToken());
 
+    // Since Alice has stake 1000, she can claim 1000 * 0.004999884259259227e18 = 4.999884259259227e18
     vm.expectEmit(true, true, true, true);
-    emit RewardPaid(address(ALICE), uint256(50000));
+    emit RewardPaid(address(ALICE), 4.999884259259227 ether);
 
     vm.prank(ALICE);
     fixture.tokenVault.exit();
 
-    assertEq(uint256(50000), fixture.fakeRewardToken.balanceOf(ALICE));
+    assertEq(
+      uint256(4.999884259259227 ether),
+      fixture.fakeRewardToken.balanceOf(ALICE)
+    );
     assertEq(0, fixture.tokenVault.rewards(ALICE));
-
     assertEq(1000 ether, fixture.fakeStakingToken.balanceOf(ALICE));
   }
 
@@ -537,14 +577,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     vm.expectEmit(true, true, true, true);
     emit Migrate(2000 ether, 2000 ether);
 
-    _simulateMigrate(
-      10000 ether,
-      10000 ether,
-      10000,
-      0,
-      1 ether,
-      TREASURY_FEE_RATE
-    );
+    _simulateMigrate(1 days, 10000 ether, 10000, 0, 1 ether, TREASURY_FEE_RATE);
 
     assertEq(2000 ether, address(fixture.tokenVault).balance);
 
@@ -574,14 +607,7 @@ contract TokenVault_Test is BaseTokenVaultFixture {
     _simulateStake(ALICE, 500 ether);
     fixture.fakeStakingToken.mint(BOB, 1500 ether);
     _simulateStake(BOB, 1500 ether);
-    _simulateMigrate(
-      10000 ether,
-      10000 ether,
-      10000,
-      0,
-      1 ether,
-      TREASURY_FEE_RATE
-    );
+    _simulateMigrate(1 days, 10000 ether, 10000, 0, 1 ether, TREASURY_FEE_RATE);
 
     assertEq(2000 ether, address(fixture.tokenVault).balance);
 
@@ -592,6 +618,113 @@ contract TokenVault_Test is BaseTokenVaultFixture {
 
     assertEq(500 ether, ALICE.balance);
     assertEq(1500 ether, BOB.balance);
+  }
+
+  function testSetMigrationOption_WhenCallerIsNotOwner() external {
+    vm.prank(ALICE);
+
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_NotOwner()"));
+
+    fixture.tokenVault.setMigrationOption(
+      IMigrator(address(0)),
+      IMigrator(address(0)),
+      block.timestamp + 1,
+      address(fixture.fakeFeeModel),
+      0,
+      address(0),
+      0
+    );
+  }
+
+  function testSetMigrationOption_WhenTreasuryFeeRateIsEq100Percent() external {
+    vm.expectRevert(
+      abi.encodeWithSignature("TokenVault_InvalidTreasuryFeeRate()")
+    );
+
+    fixture.tokenVault.setMigrationOption(
+      IMigrator(address(0)),
+      IMigrator(address(0)),
+      block.timestamp + 1,
+      address(fixture.fakeFeeModel),
+      0,
+      address(0),
+      1 ether
+    );
+  }
+
+  function testSetMigrationOption_WhenTreasuryFeeRateIsGt100Percent() external {
+    vm.expectRevert(
+      abi.encodeWithSignature("TokenVault_InvalidTreasuryFeeRate()")
+    );
+
+    fixture.tokenVault.setMigrationOption(
+      IMigrator(address(0)),
+      IMigrator(address(0)),
+      block.timestamp + 1,
+      address(fixture.fakeFeeModel),
+      0,
+      address(0),
+      1.1 ether
+    );
+  }
+
+  function testSetMigrationOption_WhenCampaignEndBlockEqCurrentBlock()
+    external
+  {
+    vm.expectRevert(
+      abi.encodeWithSignature("TokenVault_InvalidCampaignEndBlock()")
+    );
+
+    fixture.tokenVault.setMigrationOption(
+      IMigrator(address(0)),
+      IMigrator(address(0)),
+      block.timestamp,
+      address(fixture.fakeFeeModel),
+      0,
+      address(0),
+      0.9 ether
+    );
+  }
+
+  function testSetMigrationOption_WhenCampaignEndBlockLtCurrentBlock()
+    external
+  {
+    vm.expectRevert(
+      abi.encodeWithSignature("TokenVault_InvalidCampaignEndBlock()")
+    );
+
+    fixture.tokenVault.setMigrationOption(
+      IMigrator(address(0)),
+      IMigrator(address(0)),
+      block.timestamp - 1,
+      address(fixture.fakeFeeModel),
+      0,
+      address(0),
+      0.9 ether
+    );
+  }
+
+  function testSetMigrationOption_WhenAllParamsAreCorrect() external {
+    vm.expectEmit(true, true, true, true);
+    emit SetMigrationOption(
+      IMigrator(address(0)),
+      IMigrator(address(0)),
+      block.timestamp + 1,
+      address(fixture.fakeFeeModel),
+      0,
+      address(0),
+      0.9 ether
+    );
+
+    fixture.tokenVault.setMigrationOption(
+      IMigrator(address(0)),
+      IMigrator(address(0)),
+      block.timestamp + 1,
+      address(fixture.fakeFeeModel),
+      0,
+      address(0),
+      0.9 ether
+    );
   }
 
   /// @dev Fallback function to accept ETH.

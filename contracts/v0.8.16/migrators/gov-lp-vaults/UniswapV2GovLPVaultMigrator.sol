@@ -71,7 +71,7 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       : address(ILp(lpToken).token1());
 
     uint256 liquidity = IERC20(lpToken).balanceOf(address(this));
-    IERC20(lpToken).approve(address(router), liquidity);
+    IERC20(lpToken).safeApprove(address(router), liquidity);
     router.removeLiquidityETH(
       baseToken,
       liquidity,

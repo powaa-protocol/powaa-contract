@@ -22,7 +22,7 @@ contract GovLPVault is BaseTokenVault {
     uint256 returnETHAmount,
     uint256 returnPOWAAAmount
   );
-  event SetMigrationOption(IMigrator migrator, uint256 campaignEndBlock);
+  event SetMigrationOption(IMigrator migrator);
   event ClaimETHPOWAA(
     address indexed user,
     uint256 claimableETH,
@@ -41,24 +41,26 @@ contract GovLPVault is BaseTokenVault {
     address _stakingToken,
     address _controller
   ) public override {
+    if (isInitialized) revert TokenVault_AlreadyInitialized();
+
     rewardsToken = _rewardsToken;
     stakingToken = IERC20(_stakingToken);
     rewardsDistribution = _rewardsDistribution;
     controller = _controller;
     rewardsDuration = 7 days; // default 7 days
     isGovLpVault = true;
+    isInitialized = true;
   }
 
   /* ========== ADMIN FUNCTIONS ========== */
 
-  function setMigrationOption(IMigrator _migrator, uint256 _campaignEndBlock)
+  function setMigrationOption(IMigrator _migrator)
     external
     onlyMasterContractOwner
   {
     migrator = _migrator;
-    campaignEndBlock = _campaignEndBlock;
 
-    emit SetMigrationOption(_migrator, _campaignEndBlock);
+    emit SetMigrationOption(_migrator);
   }
 
   /* ========== MUTATIVE FUNCTIONS ========== */
@@ -77,6 +79,9 @@ contract GovLPVault is BaseTokenVault {
     }
 
     isMigrated = true;
+
+    if (_totalSupply == 0) return;
+
     bytes memory data = abi.encode(address(stakingToken));
     uint256 powaaBalanceBefore = IERC20(rewardsToken).balanceOf(address(this));
 

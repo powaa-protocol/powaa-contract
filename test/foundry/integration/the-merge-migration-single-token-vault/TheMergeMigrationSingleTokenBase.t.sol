@@ -15,10 +15,11 @@ import "../../../../contracts/v0.8.16/GovLPVault.sol";
 import "../../../../contracts/v0.8.16/fee-model/LinearFeeModel.sol";
 import "../../../../contracts/v0.8.16/migrators/gov-lp-vaults/UniswapV2GovLPVaultMigrator.sol";
 import "../../../../contracts/v0.8.16/migrators/token-vaults/UniswapV3TokenVaultMigrator.sol";
+import "../../../../contracts/v0.8.16/migrators/token-vaults/SushiSwapLPVaultMigrator.sol";
 import "../_base/BaseTest.sol";
 
 /// @title An abstraction of the The merge migration scenario Testing contract, containing a scaffolding method for creating the fixture
-abstract contract TheMergeMigrationBase is BaseTest {
+abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
   using Strings for uint256;
 
   address public constant TREASURY = address(115);
@@ -137,10 +138,9 @@ abstract contract TheMergeMigrationBase is BaseTest {
     assertEq(govLPVault.isGovLpVault(), true);
 
     //  - Set Migration Option for govLPVault
-    govLPVault.setMigrationOption(govLPVaultMigrator, THE_MERGE_BLOCK);
+    govLPVault.setMigrationOption(govLPVaultMigrator);
 
     assertEq(address(govLPVault.migrator()), address(govLPVaultMigrator));
-    assertEq(govLPVault.campaignEndBlock(), THE_MERGE_BLOCK);
 
     //  - Whitelist the vault in the migrators
     govLPVaultMigrator.whitelistTokenVault(address(govLPVault), true);

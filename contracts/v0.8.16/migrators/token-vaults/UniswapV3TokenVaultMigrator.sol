@@ -116,7 +116,7 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
     uint256 swapAmount = IERC20(token).balanceOf(address(this));
 
-    IERC20(token).approve(address(router), swapAmount);
+    IERC20(token).safeApprove(address(router), swapAmount);
 
     IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
       .ExactInputSingleParams({

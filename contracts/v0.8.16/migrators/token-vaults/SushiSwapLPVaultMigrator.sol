@@ -23,7 +23,6 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeERC20 for IERC20;
   using SafeMath for uint256;
 
-
   /* ========== CONSTANT ========== */
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
@@ -169,15 +168,25 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     }
   }
 
-  function getAmountOut(bytes calldata _data, uint256 _amount)
-    external
-    view
-    returns (uint256)
-  {
-    (address lpToken, uint24 poolFee) = abi.decode(_data, (address, uint24));
+  function getAmountOut(bytes calldata _data) external returns (uint256) {
+    (address lpToken, uint24 poolFee, uint256 stakeAmount) = abi.decode(
+      _data,
+      (address, uint24, uint256)
+    );
     address baseToken = address(ILp(lpToken).token0()) != address(WETH9)
       ? address(ILp(lpToken).token0())
       : address(ILp(lpToken).token1());
+
+    (uint112 reserve0, uint112 reserve1, ) = ILp(lpToken).getReserves();
+    (uint112 baseTokenReserve, uint112 ethReserve) = address(
+      ILp(lpToken).token0()
+    ) != address(WETH9)
+      ? (reserve0, reserve1)
+      : (reserve1, reserve0);
+
+    uint256 ratio = stakeAmount / ILp(lpToken).totalSupply();
+    uint256 baseTokenLiquidity = baseTokenReserve * ratio;
+    uint256 ethLiquidity = ethReserve * ratio;
 
     uint256 amountOut = quoter.quoteExactInputSingle(
       baseToken,
@@ -187,8 +196,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       0
     );
 
-    uint256 finalAmount = amountOut.add(IERC20(WETH9).balanceOf(account););
-    return finalAmount;
+    uint256 totalEth = amountOut.add(ethLiquidity);
+    return totalEth;
   }
 
   /// @dev Fallback function to accept ETH.

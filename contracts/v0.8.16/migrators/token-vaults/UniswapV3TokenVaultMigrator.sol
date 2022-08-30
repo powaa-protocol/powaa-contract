@@ -151,7 +151,6 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
   function getAmountOut(bytes calldata _data, uint256 _amount)
     external
-    view
     returns (uint256)
   {
     (address token, uint24 poolFee) = abi.decode(_data, (address, uint24));

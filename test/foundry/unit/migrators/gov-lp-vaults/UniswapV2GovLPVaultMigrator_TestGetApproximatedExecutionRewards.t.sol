@@ -38,14 +38,16 @@ contract UniswapV2GovLPVaultMigrator_TestGetApproximatedExecutionRewards is
     // our token liquidity = (total_token_reserve * (our_ratio_in_total_supply))
     // (20e18 * (100e18 / 200e18)) = 10e18
 
+    // 15 ether, as the quotation rate is mocked
     assertEq(15 ether, amountOut);
   }
 
-  function test_WhenControllerFeeIsSet() external {
+  function testGetApproximatedExecutionRewards_WhenControllerFeeIsSet() external {
     bytes memory data = abi.encode(address(mockLp), uint256(100 ether));
     uint256 controllerFee = uniswapV2GovLPVaultMigrator
       .getApproximatedExecutionRewards(data);
 
+    // GovLP give no controllerFee
     assertEq(0, controllerFee);
   }
 }

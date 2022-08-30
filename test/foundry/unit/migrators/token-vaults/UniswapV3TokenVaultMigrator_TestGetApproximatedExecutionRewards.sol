@@ -64,6 +64,28 @@ contract UniswapV3TokenVaultMigrator_TestGetApproximatedExecutionRewards is
     );
   }
 
+  function testGetAmountOut_WhenCallProperly()
+    external
+  {
+    fixture.fakeQuoter.mockSetQuoteToNativeRate(
+      address(fixture.fakeStakingToken),
+      1 ether
+    );
+
+    bytes memory data = abi.encode(
+      address(fixture.fakeStakingToken),
+      uint24(0),
+      uint256(100 ether)
+    );
+
+    uint256 amountOut = fixture.migrator.getAmountOut(
+      data
+    );
+
+    // 100 ether, as the quotation rate is mocked
+    assertEq(100 ether, amountOut);
+  }
+
   function testGetApproximatedExecutionRewards_WhenControllerFeeIsSet()
     external
   {

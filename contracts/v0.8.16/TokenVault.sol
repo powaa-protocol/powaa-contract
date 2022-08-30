@@ -78,7 +78,7 @@ contract TokenVault is BaseTokenVault {
     address _treasury,
     uint256 _treasuryFeeRate
   ) external onlyMasterContractOwner {
-    if (treasuryFeeRate >= 1 ether) {
+    if (_treasuryFeeRate >= 1 ether) {
       revert TokenVault_InvalidTreasuryFeeRate();
     }
     if (block.number >= _campaignEndBlock) {

@@ -30,7 +30,7 @@ contract SushiSwapLPVaultMigrator_TestWhitelistTokenVault is
       uint256(100 ether)
     );
 
-    uint256 amountOut = migrator.getApproximatedExecutionRewards(data);
+    uint256 amountOut = migrator.getAmountOut(data);
 
     // we mocked the quotation rate, so the amount in will be exactly equals to the amount out
 

@@ -17,8 +17,9 @@ contract MockQuoter is MockContract {
   function mockSetQuoteToNativeRate(address _token, uint256 _rate) external {
     quoteToNativeRate[_token] = _rate;
   }
-
-  function quoteExactInput(bytes memory path, uint256 amountIn)
+  
+  // path, amountIn
+  function quoteExactInput(bytes memory, uint256) 
     external
     returns (uint256 amountOut)
   {
@@ -36,7 +37,8 @@ contract MockQuoter is MockContract {
     return quoteAmount;
   }
 
-  function quoteExactOutput(bytes memory path, uint256 amountOut)
+  // path, amountOut
+  function quoteExactOutput(bytes memory, uint256)
     external
     returns (uint256 amountIn)
   {
@@ -44,11 +46,11 @@ contract MockQuoter is MockContract {
   }
 
   function quoteExactOutputSingle(
-    address tokenIn,
-    address tokenOut,
-    uint24 fee,
-    uint256 amountOut,
-    uint160 sqrtPriceLimitX96
+    address, //tokenIn
+    address, //tokenOut
+    uint24, //fee
+    uint256, //amountOut
+    uint160 //sqrtPriceLimitX96
   ) external returns (uint256 amountIn) {
     return 0;
   }

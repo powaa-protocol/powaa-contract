@@ -121,7 +121,7 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     return totalEth;
   }
 
-  function getApproximatedExecutionRewards(bytes calldata _data)
+  function getApproximatedExecutionRewards(bytes calldata)
     external
     returns (uint256)
   {

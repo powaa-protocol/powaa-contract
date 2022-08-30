@@ -25,6 +25,15 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     uint256 reserveAmount,
     uint256 reducedETHAmount
   );
+  event SetMigrationOption(
+    IMigrator migrator,
+    IMigrator reserveMigrator,
+    uint256 campaignEndBlock,
+    address feeModel,
+    uint256 feePool,
+    address treasury,
+    uint256 treasuryFeeRate
+  );
 
   struct TokenVaultTestState {
     TokenVault tokenVault;

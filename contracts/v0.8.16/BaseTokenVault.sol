@@ -35,6 +35,7 @@ abstract contract BaseTokenVault is
   uint256 public periodFinish;
   uint256 public rewardRate;
   uint256 public rewardsDuration;
+  bool internal isInitialized;
 
   uint256 public lastUpdateTime;
   uint256 public rewardPerTokenStored;
@@ -50,8 +51,6 @@ abstract contract BaseTokenVault is
   bool public isGovLpVault;
   bool public isMigrated;
 
-  uint256 public campaignStartBlock;
-  uint256 public campaignEndBlock;
   uint256 public reserve;
 
   IMigrator public migrator;
@@ -64,6 +63,7 @@ abstract contract BaseTokenVault is
   event RewardPaid(address indexed user, uint256 reward);
   event RewardsDurationUpdated(uint256 newDuration);
   event Recovered(address token, uint256 amount);
+  event SetRewardDistribution(address newRewardDistribution);
 
   /* ========== ERRORS ========== */
   error TokenVault_CannotStakeZeroAmount();
@@ -76,6 +76,8 @@ abstract contract BaseTokenVault is
   error TokenVault_NotYetMigrated();
   error TokenVault_NotController();
   error TokenVault_NotOwner();
+  error TokenVault_InvalidDuration();
+  error TokenVault_AlreadyInitialized();
 
   /* ========== MODIFIERS ========== */
 
@@ -140,6 +142,7 @@ abstract contract BaseTokenVault is
     if (_totalSupply == 0) {
       return rewardPerTokenStored;
     }
+
     return
       rewardPerTokenStored.add(
         lastTimeRewardApplicable()
@@ -182,6 +185,8 @@ abstract contract BaseTokenVault is
     onlyMasterContractOwner
   {
     rewardsDistribution = _rewardsDistribution;
+
+    emit SetRewardDistribution(_rewardsDistribution);
   }
 
   /* ========== MUTATIVE FUNCTIONS ========== */
@@ -237,6 +242,7 @@ abstract contract BaseTokenVault is
 
   function notifyRewardAmount(uint256 _reward)
     external
+    virtual
     onlyRewardsDistribution
     updateReward(address(0))
   {
@@ -257,7 +263,6 @@ abstract contract BaseTokenVault is
       revert TokenVault_ProvidedRewardTooHigh();
 
     lastUpdateTime = block.timestamp;
-    campaignStartBlock = block.number;
     periodFinish = block.timestamp.add(rewardsDuration);
     emit RewardAdded(_reward);
   }
@@ -281,6 +286,11 @@ abstract contract BaseTokenVault is
   {
     if (block.timestamp <= periodFinish) {
       revert TokenVault_RewardPeriodMustBeCompleted();
+    }
+
+    if (_rewardsDuration < 1 days || _rewardsDuration > 30 days) {
+      // Acceptable duration is between 1 - 10 days
+      revert TokenVault_InvalidDuration();
     }
 
     rewardsDuration = _rewardsDuration;

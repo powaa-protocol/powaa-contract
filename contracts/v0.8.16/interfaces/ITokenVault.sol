@@ -8,5 +8,7 @@ interface ITokenVault is IBaseTokenVault {
 
   function reduceReserve() external;
 
+  function getAmountOut() external returns (uint256);
+
   function getApproximatedExecutionRewards() external returns (uint256);
 }

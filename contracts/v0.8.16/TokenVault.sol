@@ -56,12 +56,15 @@ contract TokenVault is BaseTokenVault {
     address _stakingToken,
     address _controller
   ) public override {
+    if (isInitialized) revert TokenVault_AlreadyInitialized();
+
     rewardsToken = _rewardsToken;
     stakingToken = IERC20(_stakingToken);
     rewardsDistribution = _rewardsDistribution;
     controller = _controller;
     rewardsDuration = 7 days; // default 7 days
     isGovLpVault = false;
+    isInitialized = true;
   }
 
   /* ========== ADMIN FUNCTIONS ========== */

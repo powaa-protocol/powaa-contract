@@ -26,9 +26,11 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   /* ========== STATE VARIABLES ========== */
   uint256 public govLPTokenVaultFeeRate;
   uint256 public treasuryFeeRate;
+  uint256 public controllerFeeRate;
 
   address public treasury;
   address public govLPTokenVault;
+  address public controller;
 
   IUniswapV2Router02 public sushiSwapRouter;
   IV3SwapRouter public uniswapRouter;
@@ -38,8 +40,9 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   /* ========== EVENTS ========== */
   event Execute(
     uint256 vaultReward,
-    uint256 govLPTokenVaultReward,
-    uint256 treasuryReward
+    uint256 treasuryReward,
+    uint256 controllerReward,
+    uint256 govLPTokenVaultReward
   );
 
   /* ========== ERRORS ========== */
@@ -49,20 +52,26 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   /* ========== CONSTRUCTOR ========== */
   constructor(
     address _treasury,
+    address _controller,
     address _govLPTokenVault,
-    uint256 _govLPTokenVaultFeeRate,
     uint256 _treasuryFeeRate,
+    uint256 _controllerFeeRate,
+    uint256 _govLPTokenVaultFeeRate,
     IUniswapV2Router02 _sushiSwapRouter,
     IV3SwapRouter _uniswapRouter
   ) {
-    if (govLPTokenVaultFeeRate + treasuryFeeRate >= 1e18) {
+    if (
+      _govLPTokenVaultFeeRate + _treasuryFeeRate + _controllerFeeRate >= 1e18
+    ) {
       revert SushiSwapLPVaultMigrator_InvalidFeeRate();
     }
 
     treasury = _treasury;
+    controller = _controller;
     govLPTokenVault = _govLPTokenVault;
-    govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
     treasuryFeeRate = _treasuryFeeRate;
+    controllerFeeRate = _controllerFeeRate;
+    govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
 
     sushiSwapRouter = _sushiSwapRouter;
     uniswapRouter = _uniswapRouter;
@@ -97,7 +106,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       : address(ILp(lpToken).token1());
 
     uint256 liquidity = IERC20(lpToken).balanceOf(address(this));
-    IERC20(lpToken).approve(address(sushiSwapRouter), liquidity);
+    IERC20(lpToken).safeApprove(address(sushiSwapRouter), liquidity);
     sushiSwapRouter.removeLiquidityETH(
       baseToken,
       liquidity,
@@ -108,8 +117,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     );
 
     uint256 swapAmount = IERC20(baseToken).balanceOf(address(this));
-    IERC20(baseToken).approve(address(uniswapRouter), swapAmount);
-
+    IERC20(baseToken).safeApprove(address(uniswapRouter), swapAmount);
     IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
       .ExactInputSingleParams({
         tokenIn: baseToken,
@@ -120,23 +128,24 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
         amountOutMinimum: 0,
         sqrtPriceLimitX96: 0
       });
-
     uniswapRouter.exactInputSingle(params);
     _unwrapWETH(address(this));
-
     uint256 govLPTokenVaultFee = govLPTokenVaultFeeRate.mulWadDown(
       address(this).balance
     );
     uint256 treasuryFee = treasuryFeeRate.mulWadDown(address(this).balance);
+    uint256 controllerFee = controllerFeeRate.mulWadDown(address(this).balance);
     uint256 vaultReward = address(this).balance -
       govLPTokenVaultFee -
-      treasuryFee;
+      treasuryFee -
+      controllerFee;
+
     treasury.safeTransferETH(treasuryFee);
     govLPTokenVault.safeTransferETH(govLPTokenVaultFee);
-
+    controller.safeTransferETH(controllerFee);
     msg.sender.safeTransferETH(vaultReward);
 
-    emit Execute(vaultReward, govLPTokenVaultFee, treasuryFee);
+    emit Execute(vaultReward, treasuryFee, controllerFee, govLPTokenVaultFee);
   }
 
   function _unwrapWETH(address _recipient) private {

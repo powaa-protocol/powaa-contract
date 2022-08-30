@@ -10,22 +10,28 @@ import "../../../../contracts/v0.8.16/interfaces/apis/IUniswapV2Router02.sol";
 import "../../../../contracts/v0.8.16/interfaces/apis/IUniswapV2Factory.sol";
 import "../../../../contracts/v0.8.16/Controller.sol";
 import "../../../../contracts/v0.8.16/TokenVault.sol";
+import "../../../../contracts/v0.8.16/GovLPVault.sol";
 import "../../../../contracts/v0.8.16/fee-model/LinearFeeModel.sol";
 import "../../../../contracts/v0.8.16/migrators/gov-lp-vaults/UniswapV2GovLPVaultMigrator.sol";
 import "../../../../contracts/v0.8.16/migrators/token-vaults/UniswapV3TokenVaultMigrator.sol";
+import "../../../../contracts/v0.8.16/migrators/token-vaults/SushiSwapLPVaultMigrator.sol";
 import "../_base/BaseTest.sol";
 
 /// @title An abstraction of the The merge migration scenario Testing contract, containing a scaffolding method for creating the fixture
-abstract contract TheMergeMigrationBase is BaseTest {
+abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
   using Strings for uint256;
 
   address public constant TREASURY = address(115);
-  uint256 public constant THE_MERGE_BLOCK = 15500000;
+  address public constant WITHDRAWAL_TREASURY = address(116);
+  address public constant EXECUTOR = address(117);
+  uint256 public constant WITHDRAWAL_TREASURY_FEE_RATE = 0.5 ether;
+  uint256 public constant THE_MERGE_BLOCK = 15500000; // Assume that the merge block takes place in this block number
   uint24 public constant USDC_ETH_V3_FEE = 3000;
 
   // UniswapV3TokenVaultMigrator Params
   uint256 public constant TREASURY_FEE_RATE = 0.05 ether; // 5%
   uint256 public constant GOV_LP_VAULT_FEE_RATE = 0.05 ether; // 5%
+  uint256 public constant CONTROLLER_FEE_RATE = 0.02 ether; // 2%
 
   // LinearFeeModel Params
   uint256 public constant BASE_RATE = 0;
@@ -54,7 +60,7 @@ abstract contract TheMergeMigrationBase is BaseTest {
 
   /* ========== TokenVault ========== */
   TokenVault public usdcTokenVault;
-  TokenVault public govLPVault;
+  GovLPVault public govLPVault;
 
   /* ========== POWAA-ETH Uniswap V2 token ========== */
   ERC20 public powaaETHUniswapV2LP;
@@ -83,6 +89,8 @@ abstract contract TheMergeMigrationBase is BaseTest {
 
     // Setup TokenVault Implementation Contract
     TokenVault tokenVaultImpl = _setupTokenVaultImpl();
+    // Setup GovLPVault Implementation Contract
+    GovLPVault govLPVaultImpl = _setupGovLPVaultImpl();
 
     // Setup POWAA-ETH Uniswap V2 token
     // current liquidity = sqrt(100000e18 * 100000e18) - 10**3 = 99999999999999999999000 ~~99999.999999999999999 LP
@@ -94,54 +102,59 @@ abstract contract TheMergeMigrationBase is BaseTest {
       POWAA_ETH_LIQUIDITY
     );
 
-    //  - Create TokenVault's Clone
+    //  - Create GovLPVault's Clone
     controller.deployDeterministicVault(
-      address(tokenVaultImpl),
+      address(govLPVaultImpl),
       address(this),
       address(POWAAToken),
-      address(powaaETHUniswapV2LP),
-      address(linearFeeModel),
-      true
+      address(powaaETHUniswapV2LP)
     );
-
     // Setup GovLP related Vault and Migrator
     govLPVaultMigrator = _setupUniswapV2GovLPVaultMigrator(uniswapV2Router02);
-    govLPVaultReserveMigrator = _setupUniswapV2GovLPVaultMigrator(
-      uniswapV2Router02
-    );
-    govLPVault = TokenVault(
+    govLPVault = GovLPVault(
       payable(
         controller.getDeterministicVault(
-          address(tokenVaultImpl),
+          address(govLPVaultImpl),
           address(powaaETHUniswapV2LP)
         )
       )
     );
+
+    assertEq(govLPVault.getMasterContractOwner(), address(this));
+    // Storage of a cloned instance should be correctly updated
+    assertEq(address(govLPVault.masterContract()), address(govLPVaultImpl));
+    assertEq(govLPVault.masterContractOwner(), address(this));
+    assertEq(govLPVault.rewardsDistribution(), address(this));
+    assertEq(govLPVault.rewardsToken(), address(POWAAToken));
+    assertEq(address(govLPVault.stakingToken()), address(powaaETHUniswapV2LP));
+    assertEq(govLPVault.controller(), address(controller));
+    assertEq(govLPVault.isGovLpVault(), true);
+
     //  - Set Migration Option for govLPVault
-    govLPVault.setMigrationOption(
-      govLPVaultMigrator,
-      govLPVaultReserveMigrator,
-      THE_MERGE_BLOCK,
-      0 // v2 doesn't have a fee
-    );
+    govLPVault.setMigrationOption(govLPVaultMigrator);
+
+    assertEq(address(govLPVault.migrator()), address(govLPVaultMigrator));
+
     //  - Whitelist the vault in the migrators
     govLPVaultMigrator.whitelistTokenVault(address(govLPVault), true);
-    govLPVaultReserveMigrator.whitelistTokenVault(address(govLPVault), true);
     //  - Start a reward distribution process
     POWAAToken.transfer(address(govLPVault), 6048000 ether); // 10 POWAA / sec
     govLPVault.notifyRewardAmount(6048000 ether);
-
     // Setup USDCToken related Vault and Migrator
     tokenVaultMigrator = _setupUniswapV3TokenVaultMigrator(
       uniswapV3Router02,
       address(govLPVault),
       GOV_LP_VAULT_FEE_RATE,
-      TREASURY_FEE_RATE
+      TREASURY_FEE_RATE,
+      address(controller),
+      CONTROLLER_FEE_RATE
     );
     tokenVaultReserveMigrator = _setupUniswapV3TokenVaultMigrator(
       uniswapV3Router02,
       address(govLPVault),
       0,
+      0,
+      address(controller),
       0
     );
     //  - Create TokenVault's Clone
@@ -149,22 +162,48 @@ abstract contract TheMergeMigrationBase is BaseTest {
       address(tokenVaultImpl),
       address(this),
       address(POWAAToken),
-      address(USDC),
-      address(linearFeeModel),
-      false
+      address(USDC)
     );
     usdcTokenVault = TokenVault(
       payable(
         controller.getDeterministicVault(address(tokenVaultImpl), address(USDC))
       )
     );
+
+    assertEq(usdcTokenVault.getMasterContractOwner(), address(this));
+    assertEq(address(usdcTokenVault.masterContract()), address(tokenVaultImpl));
+    assertEq(usdcTokenVault.masterContractOwner(), address(this));
+    assertEq(usdcTokenVault.rewardsDistribution(), address(this));
+    assertEq(usdcTokenVault.rewardsToken(), address(POWAAToken));
+    assertEq(address(usdcTokenVault.stakingToken()), address(USDC));
+    assertEq(usdcTokenVault.controller(), address(controller));
+    assertEq(usdcTokenVault.isGovLpVault(), false);
+
     //  - Set Migration Option for usdcTokenVault
     usdcTokenVault.setMigrationOption(
       tokenVaultMigrator,
       tokenVaultReserveMigrator,
       THE_MERGE_BLOCK,
-      USDC_ETH_V3_FEE
+      address(linearFeeModel),
+      USDC_ETH_V3_FEE,
+      WITHDRAWAL_TREASURY,
+      WITHDRAWAL_TREASURY_FEE_RATE
     );
+
+    assertEq(address(usdcTokenVault.migrator()), address(tokenVaultMigrator));
+    assertEq(
+      address(usdcTokenVault.reserveMigrator()),
+      address(tokenVaultReserveMigrator)
+    );
+    assertEq(
+      address(usdcTokenVault.withdrawalFeeModel()),
+      address(linearFeeModel)
+    );
+    assertEq(usdcTokenVault.feePool(), USDC_ETH_V3_FEE);
+    assertEq(usdcTokenVault.treasury(), WITHDRAWAL_TREASURY);
+    assertEq(usdcTokenVault.treasuryFeeRate(), WITHDRAWAL_TREASURY_FEE_RATE);
+    assertEq(usdcTokenVault.campaignEndBlock(), THE_MERGE_BLOCK);
+
     //  - Whitelist the vault in the migrators
     tokenVaultMigrator.whitelistTokenVault(address(usdcTokenVault), true);
     tokenVaultReserveMigrator.whitelistTokenVault(
@@ -197,14 +236,18 @@ abstract contract TheMergeMigrationBase is BaseTest {
     IV3SwapRouter _router,
     address _govLPVault,
     uint256 _govLPVaultFeeRate,
-    uint256 _treasuryFeeRate
+    uint256 _treasuryFeeRate,
+    address _controller,
+    uint256 _controllerFeeRate
   ) internal returns (UniswapV3TokenVaultMigrator) {
     return
       new UniswapV3TokenVaultMigrator(
         TREASURY,
+        _controller,
         _govLPVault,
-        _govLPVaultFeeRate,
         _treasuryFeeRate,
+        _controllerFeeRate,
+        _govLPVaultFeeRate,
         _router
       );
   }
@@ -245,5 +288,9 @@ abstract contract TheMergeMigrationBase is BaseTest {
 
   function _setupTokenVaultImpl() internal returns (TokenVault) {
     return new TokenVault();
+  }
+
+  function _setupGovLPVaultImpl() internal returns (GovLPVault) {
+    return new GovLPVault();
   }
 }

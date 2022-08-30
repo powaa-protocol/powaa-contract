@@ -27,7 +27,7 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   mapping(address => bool) public tokenVaultOK;
 
   /* ========== EVENTS ========== */
-  event Execute(uint256 vaultReward);
+  event Execute(uint256 returnedETH, uint256 returnedBaseToken);
 
   /* ========== ERRORS ========== */
   error UniswapV2GovLPVaultMigrator_OnlyWhitelistedTokenVault();
@@ -66,7 +66,7 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       : address(ILp(lpToken).token1());
 
     uint256 liquidity = IERC20(lpToken).balanceOf(address(this));
-    IERC20(lpToken).approve(address(router), liquidity);
+    IERC20(lpToken).safeApprove(address(router), liquidity);
     router.removeLiquidityETH(
       baseToken,
       liquidity,
@@ -75,25 +75,13 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       address(this),
       block.timestamp
     );
+    uint256 returnedETH = address(this).balance;
+    uint256 returnedBaseToken = IERC20(baseToken).balanceOf(address(this));
 
-    address[] memory _path = new address[](2);
-    _path[0] = baseToken;
-    _path[1] = WETH9;
-    uint256 swapAmount = IERC20(baseToken).balanceOf(address(this));
+    msg.sender.safeTransferETH(returnedETH);
+    IERC20(baseToken).safeTransfer(msg.sender, returnedBaseToken);
 
-    IERC20(baseToken).approve(address(router), swapAmount);
-    router.swapExactTokensForETH(
-      swapAmount,
-      0,
-      _path,
-      address(this),
-      block.timestamp
-    );
-
-    uint256 vaultReward = address(this).balance;
-    msg.sender.safeTransferETH(vaultReward);
-
-    emit Execute(vaultReward);
+    emit Execute(returnedETH, returnedBaseToken);
   }
 
   /// @dev Fallback function to accept ETH.

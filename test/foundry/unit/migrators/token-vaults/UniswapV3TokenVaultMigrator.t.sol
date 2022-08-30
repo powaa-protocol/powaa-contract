@@ -20,18 +20,21 @@ contract UniswapV3TokenVaultMigrator_Test is
   uint256 public constant WETH9_NATIVE_BALANCE = 100000000 ether;
 
   function _setUpWithFeeParameters(
-    uint256 _govLPTokenVaultFeeRate,
-    uint256 _treasuryFeeRate
+    uint256 _treasuryFeeRate,
+    uint256 _controllerFeeRate,
+    uint256 _govLPTokenVaultFeeRate
   ) internal {
     UniswapV3TokenVaultMigratorTestState
       memory _fixture = _scaffoldUniswapV3TokenVaultMigratorTestState(
-        _govLPTokenVaultFeeRate,
-        _treasuryFeeRate
+        _treasuryFeeRate,
+        _controllerFeeRate,
+        _govLPTokenVaultFeeRate
       );
 
     fixture = UniswapV3TokenVaultMigratorTestState({
       migrator: _fixture.migrator,
       treasury: _fixture.treasury,
+      controller: _fixture.controller,
       govLPTokenVault: _fixture.govLPTokenVault,
       fakeSwapRouter: _fixture.fakeSwapRouter,
       fakeTokenVault: _fixture.fakeTokenVault,
@@ -44,7 +47,7 @@ contract UniswapV3TokenVaultMigrator_Test is
   }
 
   function setUp() public {
-    _setUpWithFeeParameters(0.1 ether, 0.1 ether);
+    _setUpWithFeeParameters(0.1 ether, 0.5 ether, 0.1 ether);
 
     MockWETH9 mockWETH9 = new MockWETH9();
     bytes memory wrappedETH9Code = address(mockWETH9).code;
@@ -73,22 +76,24 @@ contract UniswapV3TokenVaultMigrator_Test is
     );
 
     vm.expectEmit(true, true, true, true);
-    emit Execute(800 ether, 100 ether, 100 ether);
+    emit Execute(300 ether, 100 ether, 500 ether, 100 ether);
 
     vm.prank(address(fixture.fakeTokenVault));
     fixture.migrator.execute(data);
 
-    // 0.1 treasury fee, 0.1 gov Vault fee
-    assertEq(800 ether, address(fixture.fakeTokenVault).balance);
+    // 10% treasury fee, 10% gov Vault fee, 50% controller fee
+    assertEq(300 ether, address(fixture.fakeTokenVault).balance);
     assertEq(100 ether, address(fixture.treasury).balance);
     assertEq(100 ether, address(fixture.govLPTokenVault).balance);
+    assertEq(500 ether, address(fixture.controller).balance);
   }
 
   function testExecute_WhenProperlyCallWithWhitelistedAccount_Fuzzy(
     uint256 amount,
     uint256 stakingTokenToEthRate,
     uint256 govLPTokenVaultFeeRate,
-    uint256 treasuryFeeRate
+    uint256 treasuryFeeRate,
+    uint256 controllerFeeRate
   ) external {
     amount = bound(amount, 1 ether, 10 ether);
     stakingTokenToEthRate = bound(stakingTokenToEthRate, 1 ether, 100 ether);
@@ -100,8 +105,17 @@ contract UniswapV3TokenVaultMigrator_Test is
       1,
       uint256(0.99 ether).sub(govLPTokenVaultFeeRate)
     );
+    controllerFeeRate = bound(
+      controllerFeeRate,
+      1,
+      uint256(0.99 ether).sub(govLPTokenVaultFeeRate).sub(treasuryFeeRate)
+    );
 
-    _setUpWithFeeParameters(govLPTokenVaultFeeRate, treasuryFeeRate);
+    _setUpWithFeeParameters(
+      treasuryFeeRate,
+      controllerFeeRate,
+      govLPTokenVaultFeeRate
+    );
     fixture.fakeStakingToken.mint(address(fixture.migrator), amount);
 
     fixture.fakeSwapRouter.mockSetSwapRate(
@@ -118,9 +132,11 @@ contract UniswapV3TokenVaultMigrator_Test is
       swappedEth
     );
     uint256 expectedTreasuryFee = treasuryFeeRate.mulWadDown(swappedEth);
-    uint256 expectedEthBalance = swappedEth.sub(expectedGovTokenVaultFee).sub(
-      expectedTreasuryFee
-    );
+    uint256 expectedControllerFee = controllerFeeRate.mulWadDown(swappedEth);
+    uint256 expectedEthBalance = swappedEth
+      .sub(expectedGovTokenVaultFee)
+      .sub(expectedTreasuryFee)
+      .sub(expectedControllerFee);
 
     MockERC20(payable(WETH9)).mint(address(fixture.fakeSwapRouter), swappedEth);
     vm.deal(WETH9, swappedEth);
@@ -128,8 +144,9 @@ contract UniswapV3TokenVaultMigrator_Test is
     vm.expectEmit(true, true, true, true);
     emit Execute(
       expectedEthBalance,
-      expectedGovTokenVaultFee,
-      expectedTreasuryFee
+      expectedTreasuryFee,
+      expectedControllerFee,
+      expectedGovTokenVaultFee
     );
     vm.prank(address(fixture.fakeTokenVault));
     fixture.migrator.execute(data);
@@ -153,7 +170,7 @@ contract UniswapV3TokenVaultMigrator_Test is
     );
 
     vm.expectEmit(true, true, true, true);
-    emit Execute(0, 0, 0);
+    emit Execute(0, 0, 0, 0);
 
     vm.prank(address(fixture.fakeTokenVault));
     fixture.migrator.execute(data);

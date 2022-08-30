@@ -4,45 +4,29 @@ pragma solidity 0.8.16;
 import "../_base/BaseTest.sol";
 import "../_mock/MockERC20.sol";
 import "../_mock/MockETHLpToken.sol";
-import "../_mock/MockTokenVaultMigrator.sol";
-import "../_mock/MockFeeModel.sol";
-import "../../../../contracts/v0.8.16/TokenVault.sol";
+import "../_mock/MockGovLPMigrator.sol";
+import "../../../../contracts/v0.8.16/GovLPVault.sol";
 
-abstract contract BaseTokenVaultFixture is BaseTest {
+abstract contract BaseGovLPVaultFixture is BaseTest {
   uint256 public constant STAKE_AMOUNT_1000 = 1000 * 1e18;
-  uint256 public constant TREASURY_FEE_RATE = 0.5 ether;
+
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-  event RewardAdded(uint256 reward);
   event Staked(address indexed user, uint256 amount);
   event Withdrawn(address indexed user, uint256 amount, uint256 fee);
-  event RewardPaid(address indexed user, uint256 reward);
-  event RewardsDurationUpdated(uint256 newDuration);
-  event Migrate(uint256 stakingTokenAmount, uint256 vaultETHAmount);
-  event ClaimETH(address indexed user, uint256 ethAmount);
-  event ReduceReserve(
-    address to,
-    uint256 reserveAmount,
-    uint256 reducedETHAmount
+  event Migrate(
+    uint256 stakingTokenAmount,
+    uint256 returnETHAmount,
+    uint256 returnPOWAAAmount
   );
-  event SetMigrationOption(
-    IMigrator migrator,
-    IMigrator reserveMigrator,
-    uint256 campaignEndBlock,
-    address feeModel,
-    uint256 feePool,
-    address treasury,
-    uint256 treasuryFeeRate
-  );
+  event ReduceReserve(uint256 reserveAmount, uint256 reducedETHAmount);
+  event SetMigrationOption(IMigrator migrator);
 
-  struct TokenVaultTestState {
-    TokenVault tokenVault;
+  struct GovLPVaultTestState {
+    GovLPVault govLPVault;
     address controller;
     address rewardDistributor;
-    address treasury;
-    MockFeeModel fakeFeeModel;
-    MockTokenVaultMigrator fakeMigrator;
-    MockTokenVaultMigrator fakeReserveMigrator;
+    MockGovLPMigrator fakeMigrator;
     MockERC20 fakeRewardToken;
     MockERC20 fakeStakingToken;
     MockETHLpToken fakeGovLpToken;
@@ -65,13 +49,13 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     return MockERC20(payable(_proxy));
   }
 
-  function _setupTokenVault(
+  function _setupGovLPVault(
     address _rewardsDistribution,
     address _rewardsToken,
     address _stakingToken,
     address _controller
-  ) internal returns (TokenVault) {
-    TokenVault _impl = new TokenVault();
+  ) internal returns (GovLPVault) {
+    GovLPVault _impl = new GovLPVault();
 
     _impl.initialize(
       _rewardsDistribution,
@@ -83,24 +67,26 @@ abstract contract BaseTokenVaultFixture is BaseTest {
     return _impl;
   }
 
-  function _scaffoldTokenVaultTestState()
+  function _scaffoldGovLPVaultLPTestState()
     internal
-    returns (TokenVaultTestState memory)
+    returns (GovLPVaultTestState memory)
   {
-    TokenVaultTestState memory _state;
+    GovLPVaultTestState memory _state;
     _state.controller = address(123451234);
     _state.rewardDistributor = address(123456789);
-    _state.fakeFeeModel = new MockFeeModel();
-    _state.fakeMigrator = new MockTokenVaultMigrator();
-    _state.fakeReserveMigrator = new MockTokenVaultMigrator();
+    _state.fakeMigrator = new MockGovLPMigrator();
     _state.fakeRewardToken = _setupFakeERC20("Reward Token", "RT");
-    _state.fakeStakingToken = _setupFakeERC20("Staking Token", "ST");
-    _state.treasury = address(111);
+    _state.fakeGovLpToken = new MockETHLpToken(
+      IERC20(address(_state.fakeRewardToken))
+    );
+    _state.fakeStakingToken = MockERC20(payable(_state.fakeGovLpToken));
 
-    _state.tokenVault = _setupTokenVault(
+    _state.fakeGovLpToken.initialize("Gov LP Token", "G-LP");
+
+    _state.govLPVault = _setupGovLPVault(
       address(_state.rewardDistributor),
       address(_state.fakeRewardToken),
-      address(_state.fakeStakingToken),
+      address(_state.fakeGovLpToken),
       address(_state.controller)
     );
 

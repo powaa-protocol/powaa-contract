@@ -25,9 +25,11 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   /* ========== STATE VARIABLES ========== */
   uint256 public govLPTokenVaultFeeRate;
   uint256 public treasuryFeeRate;
+  uint256 public controllerFeeRate;
 
   address public treasury;
   address public govLPTokenVault;
+  address public controller;
   IV3SwapRouter public router;
 
   mapping(address => bool) public tokenVaultOK;
@@ -35,8 +37,9 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   /* ========== EVENTS ========== */
   event Execute(
     uint256 vaultReward,
-    uint256 govLPTokenVaultReward,
-    uint256 treasuryReward
+    uint256 treasuryReward,
+    uint256 controllerReward,
+    uint256 govLPTokenVaultReward
   );
   event WhitelistTokenVault(address tokenVault, bool whitelisted);
 
@@ -47,19 +50,25 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   /* ========== CONSTRUCTOR ========== */
   constructor(
     address _treasury,
+    address _controller,
     address _govLPTokenVault,
-    uint256 _govLPTokenVaultFeeRate,
     uint256 _treasuryFeeRate,
+    uint256 _controllerFeeRate,
+    uint256 _govLPTokenVaultFeeRate,
     IV3SwapRouter _router
   ) {
-    if (govLPTokenVaultFeeRate + treasuryFeeRate >= 1e18) {
+    if (
+      _govLPTokenVaultFeeRate + _treasuryFeeRate + _controllerFeeRate >= 1e18
+    ) {
       revert UniswapV3TokenVaultMigrator_InvalidFeeRate();
     }
 
     treasury = _treasury;
+    controller = _controller;
     govLPTokenVault = _govLPTokenVault;
-    govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
     treasuryFeeRate = _treasuryFeeRate;
+    controllerFeeRate = _controllerFeeRate;
+    govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
     router = _router;
   }
 
@@ -101,7 +110,7 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
     uint256 swapAmount = IERC20(token).balanceOf(address(this));
 
-    IERC20(token).approve(address(router), swapAmount);
+    IERC20(token).safeApprove(address(router), swapAmount);
 
     IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
       .ExactInputSingleParams({
@@ -121,14 +130,17 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       address(this).balance
     );
     uint256 treasuryFee = treasuryFeeRate.mulWadDown(address(this).balance);
+    uint256 controllerFee = controllerFeeRate.mulWadDown(address(this).balance);
     uint256 vaultReward = address(this).balance -
       govLPTokenVaultFee -
-      treasuryFee;
+      treasuryFee -
+      controllerFee;
     treasury.safeTransferETH(treasuryFee);
     govLPTokenVault.safeTransferETH(govLPTokenVaultFee);
+    controller.safeTransferETH(controllerFee);
     msg.sender.safeTransferETH(vaultReward);
 
-    emit Execute(vaultReward, govLPTokenVaultFee, treasuryFee);
+    emit Execute(vaultReward, treasuryFee, controllerFee, govLPTokenVaultFee);
   }
 
   /// @dev Fallback function to accept ETH.

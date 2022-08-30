@@ -168,7 +168,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     }
   }
 
-  function getAmountOut(bytes calldata _data) external returns (uint256) {
+  function getAmountOut(bytes calldata _data) public returns (uint256) {
     (address lpToken, uint24 poolFee, uint256 stakeAmount) = abi.decode(
       _data,
       (address, uint24, uint256)
@@ -192,12 +192,22 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       baseToken,
       WETH9,
       poolFee,
-      _amount,
+      baseTokenLiquidity,
       0
     );
 
     uint256 totalEth = amountOut.add(ethLiquidity);
     return totalEth;
+  }
+
+  function getApproximatedExecutionRewards(bytes calldata _data)
+    external
+    returns (uint256)
+  {
+    uint256 totalEth = getAmountOut(_data);
+    uint256 controllerFee = controllerFeeRate.mulWadDown(totalEth);
+
+    return controllerFee;
   }
 
   /// @dev Fallback function to accept ETH.

@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -11,18 +12,21 @@ import "../../../../lib/solmate/src/utils/SafeTransferLib.sol";
 import "../../../../lib/solmate/src/utils/FixedPointMathLib.sol";
 import "../../interfaces/IMigrator.sol";
 import "../../interfaces/apis/IUniswapV2Router02.sol";
+import "../../interfaces/apis/IQuoter.sol";
 import "../../interfaces/ILp.sol";
 
 contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeTransferLib for address;
   using FixedPointMathLib for uint256;
   using SafeERC20 for IERC20;
+  using SafeMath for uint256;
 
   /* ========== CONSTANT ========== */
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
   /* ========== STATE VARIABLES ========== */
   IUniswapV2Router02 public router;
+  IQuoter public quoter;
 
   mapping(address => bool) public tokenVaultOK;
 
@@ -33,8 +37,9 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   error UniswapV2GovLPVaultMigrator_OnlyWhitelistedTokenVault();
 
   /* ========== CONSTRUCTOR ========== */
-  constructor(IUniswapV2Router02 _router) {
+  constructor(IUniswapV2Router02 _router, IQuoter _quoter) {
     router = _router;
+    quoter = _quoter;
   }
 
   /* ========== MODIFIERS ========== */
@@ -82,6 +87,45 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     IERC20(baseToken).safeTransfer(msg.sender, returnedBaseToken);
 
     emit Execute(returnedETH, returnedBaseToken);
+  }
+
+  function getAmountOut(bytes calldata _data) public returns (uint256) {
+    (address lpToken, uint256 stakeAmount) = abi.decode(
+      _data,
+      (address, uint256)
+    );
+    address baseToken = address(ILp(lpToken).token0()) != address(WETH9)
+      ? address(ILp(lpToken).token0())
+      : address(ILp(lpToken).token1());
+
+    (uint112 reserve0, uint112 reserve1, ) = ILp(lpToken).getReserves();
+    (uint112 baseTokenReserve, uint112 ethReserve) = address(
+      ILp(lpToken).token0()
+    ) != address(WETH9)
+      ? (reserve0, reserve1)
+      : (reserve1, reserve0);
+
+    uint256 ratio = stakeAmount / ILp(lpToken).totalSupply();
+    uint256 baseTokenLiquidity = baseTokenReserve * ratio;
+    uint256 ethLiquidity = ethReserve * ratio;
+
+    uint256 amountOut = quoter.quoteExactInputSingle(
+      baseToken,
+      WETH9,
+      0,
+      baseTokenLiquidity,
+      0
+    );
+
+    uint256 totalEth = amountOut.add(ethLiquidity);
+    return totalEth;
+  }
+
+  function getApproximatedExecutionRewards(bytes calldata _data)
+    external
+    returns (uint256)
+  {
+    return 0;
   }
 
   /// @dev Fallback function to accept ETH.

@@ -149,6 +149,24 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     emit Execute(vaultReward, treasuryFee, controllerFee, govLPTokenVaultFee);
   }
 
+  function getAmountOut(bytes calldata _data, uint256 _amount)
+    external
+    view
+    returns (uint256)
+  {
+    (address token, uint24 poolFee) = abi.decode(_data, (address, uint24));
+
+    uint256 amountOut = quoter.quoteExactInputSingle(
+      token,
+      WETH9,
+      poolFee,
+      _amount,
+      0
+    );
+
+    return amountOut;
+  }
+
   /// @dev Fallback function to accept ETH.
   receive() external payable {}
 }

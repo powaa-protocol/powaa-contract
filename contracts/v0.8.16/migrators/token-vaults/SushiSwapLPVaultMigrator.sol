@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -20,6 +21,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeTransferLib for address;
   using FixedPointMathLib for uint256;
   using SafeERC20 for IERC20;
+  using SafeMath for uint256;
+
 
   /* ========== CONSTANT ========== */
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -164,6 +167,28 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       IWETH9(WETH9).withdraw(balanceWETH9);
       _recipient.safeTransferETH(balanceWETH9);
     }
+  }
+
+  function getAmountOut(bytes calldata _data, uint256 _amount)
+    external
+    view
+    returns (uint256)
+  {
+    (address lpToken, uint24 poolFee) = abi.decode(_data, (address, uint24));
+    address baseToken = address(ILp(lpToken).token0()) != address(WETH9)
+      ? address(ILp(lpToken).token0())
+      : address(ILp(lpToken).token1());
+
+    uint256 amountOut = quoter.quoteExactInputSingle(
+      baseToken,
+      WETH9,
+      poolFee,
+      _amount,
+      0
+    );
+
+    uint256 finalAmount = amountOut.add(IERC20(WETH9).balanceOf(account););
+    return finalAmount;
   }
 
   /// @dev Fallback function to accept ETH.

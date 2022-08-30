@@ -9,6 +9,7 @@ import "../../../_mock/MockCurveLpToken.sol";
 import "../../../_mock/MockCurveFiStableSwap.sol";
 import "../../../_mock/MockCurveFiStableSwap2.sol";
 import "../../../_mock/MockV3SwapRouter.sol";
+import "../../../_mock/MockQuoter.sol";
 import "../../../_mock/MockETHLpToken.sol";
 import "../../../_mock/MockWETH9.sol";
 import "../../../../../../contracts/v0.8.16/migrators/token-vaults/CurveLPVaultMigrator.sol";
@@ -19,6 +20,7 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
   CurveLPVaultMigrator internal migrator;
 
   address internal constant TREASURY = address(12345);
+  address internal constant CONTROLLER = address(11355);
   address internal constant GOV_LP_TOKEN_VAULT = address(54321);
 
   address internal constant TOKEN_VAULT_STETH = address(77777);
@@ -33,6 +35,7 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
   MockCurveFiStableSwap internal fakeCurve3PoolStableSwap;
   MockCurveFiStableSwap internal fakeCurveTriCrypto2StableSwap;
   MockV3SwapRouter internal fakeUniswapRouter;
+  MockQuoter internal fakeQuoter;
 
   MockERC20 internal mockBaseToken;
   MockETHLpToken internal mockLpToken;
@@ -46,8 +49,9 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
   function setUp() public virtual {
     _setupMockWETH9(100000000 ether);
     fakeUniswapRouter = new MockV3SwapRouter();
+    fakeQuoter = new MockQuoter();
 
-    migrator = _setupMigrator(0.1 ether, 0.1 ether);
+    migrator = _setupMigrator(0.1 ether, 0.1 ether, 0.1 ether);
 
     mockBaseToken = _setupFakeERC20("BASE ERC20 TOKEN", "BT");
     mockLpToken = new MockETHLpToken(IERC20(address(mockBaseToken)));
@@ -159,15 +163,19 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
   }
 
   function _setupMigrator(
-    uint256 _govLPTokenVaultFeeRate,
-    uint256 _treasuryFeeRate
+    uint256 _treasuryFeeRate,
+    uint256 _controllerFeeRate,
+    uint256 _govLPTokenVaultFeeRate
   ) internal returns (CurveLPVaultMigrator) {
     CurveLPVaultMigrator _migrator = new CurveLPVaultMigrator(
       TREASURY,
+      CONTROLLER,
       GOV_LP_TOKEN_VAULT,
-      _govLPTokenVaultFeeRate,
       _treasuryFeeRate,
-      IV3SwapRouter(address(fakeUniswapRouter))
+      _controllerFeeRate,
+      _govLPTokenVaultFeeRate,
+      IV3SwapRouter(address(fakeUniswapRouter)),
+      IQuoter(address(fakeQuoter))
     );
 
     return _migrator;

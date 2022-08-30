@@ -13,6 +13,7 @@ import "../../../../lib/solmate/src/utils/FixedPointMathLib.sol";
 import "../../interfaces/IMigrator.sol";
 import "../../interfaces/apis/ICurveFiStableSwap.sol";
 import "../../interfaces/apis/IUniswapV2Router02.sol";
+import "../../interfaces/apis/IQuoter.sol";
 import "../../interfaces/ILp.sol";
 import "../../interfaces/IWETH9.sol";
 
@@ -22,16 +23,20 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeERC20 for IERC20;
 
   /* ========== CONSTANT ========== */
+  address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
   /* ========== STATE VARIABLES ========== */
   uint256 public govLPTokenVaultFeeRate;
   uint256 public treasuryFeeRate;
+  uint256 public controllerFeeRate;
 
   address public treasury;
   address public govLPTokenVault;
+  address public controller;
 
   IV3SwapRouter public uniswapRouter;
+  IQuoter public quoter;
 
   mapping(address => bool) public tokenVaultOK;
   mapping(address => ICurveFiStableSwap) public tokenVaultPoolRouter;
@@ -51,21 +56,28 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   /* ========== CONSTRUCTOR ========== */
   constructor(
     address _treasury,
+    address _controller,
     address _govLPTokenVault,
-    uint256 _govLPTokenVaultFeeRate,
     uint256 _treasuryFeeRate,
-    IV3SwapRouter _uniswapRouter
+    uint256 _controllerFeeRate,
+    uint256 _govLPTokenVaultFeeRate,
+    IV3SwapRouter _uniswapRouter,
+    IQuoter _quoter
   ) {
     if (govLPTokenVaultFeeRate + treasuryFeeRate >= 1e18) {
       revert CurveLPVaultMigrator_InvalidFeeRate();
     }
 
     treasury = _treasury;
+    controller = _controller;
     govLPTokenVault = _govLPTokenVault;
+
     govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
+    controllerFeeRate = _controllerFeeRate;
     treasuryFeeRate = _treasuryFeeRate;
 
     uniswapRouter = _uniswapRouter;
+    quoter = _quoter;
   }
 
   /* ========== MODIFIERS ========== */
@@ -164,6 +176,50 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       IWETH9(WETH9).withdraw(balanceWETH9);
       _recipient.safeTransferETH(balanceWETH9);
     }
+  }
+
+  function getAmountOut(bytes calldata _data) public returns (uint256) {
+    (address lpToken, uint24 poolFee, uint256 stakeAmount) = abi.decode(
+      _data,
+      (address, uint24, uint256)
+    );
+
+    ICurveFiStableSwap curveStableSwap = tokenVaultPoolRouter[msg.sender];
+    uint24 underlyingCount = poolUnderlyingCount[address(curveStableSwap)];
+
+    uint256 ratio = stakeAmount.divWadDown(IERC20(lpToken).totalSupply());
+    uint256 amountOut = 0;
+    uint256 i;
+    for (i = 0; i < underlyingCount; i++) {
+      address coinAddress = curveStableSwap.coins((i));
+
+      uint256 reserve = curveStableSwap.balances(i);
+      uint256 liquidity = uint256(reserve).mulWadDown(ratio);
+
+      if (coinAddress == ETH || coinAddress == WETH9) {
+        amountOut += liquidity;
+      } else {
+        amountOut += quoter.quoteExactInputSingle(
+          coinAddress,
+          WETH9,
+          poolFee,
+          liquidity,
+          0
+        );
+      }
+    }
+
+    return amountOut;
+  }
+
+  function getApproximatedExecutionRewards(bytes calldata _data)
+    external
+    returns (uint256)
+  {
+    uint256 totalEth = getAmountOut(_data);
+    uint256 controllerFee = controllerFeeRate.mulWadDown(totalEth);
+
+    return controllerFee;
   }
 
   /// @dev Fallback function to accept ETH.

@@ -250,12 +250,26 @@ contract TokenVault is BaseTokenVault {
   }
 
   function getAmountOut() external returns (uint256) {
-    bytes memory data = abi.encode(address(stakingToken), uint24(feePool), uint256(_totalSupply));
+    if (feePool == 0 || address(migrator) == address(0) || _totalSupply == 0) {
+      return 0;
+    }
+    bytes memory data = abi.encode(
+      address(stakingToken),
+      uint24(feePool),
+      uint256(_totalSupply)
+    );
     return migrator.getAmountOut(data);
   }
 
-  function getApproximatedExecutionRewards() external returns (uint256){
-    bytes memory data = abi.encode(address(stakingToken), uint24(feePool), uint256(_totalSupply));
+  function getApproximatedExecutionRewards() external returns (uint256) {
+    if (feePool == 0 || address(migrator) == address(0) || _totalSupply == 0)
+      return 0;
+
+    bytes memory data = abi.encode(
+      address(stakingToken),
+      uint24(feePool),
+      uint256(_totalSupply)
+    );
     return migrator.getApproximatedExecutionRewards(data);
   }
 

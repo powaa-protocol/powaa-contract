@@ -42,13 +42,15 @@ contract TokenVault_TestGetApproximatedExecutionRewards is
     // and pretend that it actually does the swapping when we executing migration
     vm.deal(address(fixture.fakeMigrator), MIGRATOR_BALANCE);
     vm.deal(address(fixture.fakeReserveMigrator), MIGRATOR_BALANCE);
+  }
 
+  function _setUpMigrationOption() internal {
     fixture.tokenVault.setMigrationOption(
       IMigrator(address(fixture.fakeMigrator)),
       IMigrator(address(fixture.fakeReserveMigrator)),
       block.number + 100,
       address(249146), // fee model is not necessary in this test
-      uint24(0),
+      uint24(3000),
       address(1236287), // treasury is not necessary in this test
       0.2 ether
     );
@@ -66,6 +68,7 @@ contract TokenVault_TestGetApproximatedExecutionRewards is
   }
 
   function test_WhenSomeTokenStaked() external {
+    _setUpMigrationOption();
     fixture.fakeMigrator.mockSetMigrateRate(
       address(fixture.fakeStakingToken),
       1 ether
@@ -80,22 +83,36 @@ contract TokenVault_TestGetApproximatedExecutionRewards is
     _simulateStake(CATHY, 10 ether);
 
     assertEq(100 ether, fixture.tokenVault.totalSupply());
-
-    uint256 amountOut = fixture.tokenVault.getApproximatedExecutionRewards();
-    assertEq(50 ether, amountOut);
+    assertEq(50 ether, fixture.tokenVault.getApproximatedExecutionRewards());
   }
 
   function test_WhenNoTokenStaked() external {
+    _setUpMigrationOption();
+
     fixture.fakeMigrator.mockSetMigrateRate(
       address(fixture.fakeStakingToken),
       1 ether
     );
-    fixture.fakeMigrator.mockSetControllerFeeRate(0.5 ether);
 
-    assertEq(0 ether, fixture.tokenVault.totalSupply());
+    assertEq(0, fixture.tokenVault.totalSupply());
+    assertEq(0, fixture.tokenVault.getApproximatedExecutionRewards());
+  }
 
-    uint256 amountOut = fixture.tokenVault.getApproximatedExecutionRewards();
-    assertEq(0 ether, amountOut);
+  function test_WhenMigrationOptionIsUnset() external {
+    fixture.fakeMigrator.mockSetMigrateRate(
+      address(fixture.fakeStakingToken),
+      1 ether
+    );
+
+    fixture.fakeStakingToken.mint(ALICE, 50 ether);
+    _simulateStake(ALICE, 50 ether);
+    fixture.fakeStakingToken.mint(BOB, 40 ether);
+    _simulateStake(BOB, 40 ether);
+    fixture.fakeStakingToken.mint(CATHY, 10 ether);
+    _simulateStake(CATHY, 10 ether);
+
+    assertEq(100 ether, fixture.tokenVault.totalSupply());
+    assertEq(0, fixture.tokenVault.getApproximatedExecutionRewards());
   }
 
   /// @dev Fallback function to accept ETH.

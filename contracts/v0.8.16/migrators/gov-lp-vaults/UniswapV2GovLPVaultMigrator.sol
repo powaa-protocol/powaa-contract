@@ -125,6 +125,7 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     external
     returns (uint256)
   {
+    // no execution reward from this pool
     return 0;
   }
 

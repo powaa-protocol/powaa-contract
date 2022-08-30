@@ -7,4 +7,6 @@ interface ITokenVault is IBaseTokenVault {
   function claimETH() external;
 
   function reduceReserve() external;
+
+  function getApproximatedExecutionRewards() external returns (uint256);
 }

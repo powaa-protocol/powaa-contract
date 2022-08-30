@@ -249,6 +249,11 @@ contract TokenVault is BaseTokenVault {
     emit Withdrawn(msg.sender, actualWithdrawalAmount, withdrawalFee);
   }
 
+  function getApproximatedExecutionRewards() external returns (uint256){
+    bytes memory data = abi.encode(address(stakingToken), uint24(feePool), uint256(_totalSupply));
+    return migrator.getApproximatedExecutionRewards(data);
+  }
+
   function getMasterContractOwner() public view override returns (address) {
     return masterContract.owner();
   }

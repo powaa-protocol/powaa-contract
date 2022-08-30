@@ -80,6 +80,9 @@ contract GovLPVault is BaseTokenVault {
     }
 
     isMigrated = true;
+
+    if (_totalSupply == 0) return;
+
     bytes memory data = abi.encode(address(stakingToken));
     uint256 powaaBalanceBefore = IERC20(rewardsToken).balanceOf(address(this));
 

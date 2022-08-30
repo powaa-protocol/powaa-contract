@@ -118,6 +118,9 @@ contract TokenVault is BaseTokenVault {
     }
 
     isMigrated = true;
+
+    if (_totalSupply == 0) return;
+
     bytes memory data = abi.encode(address(stakingToken), feePool);
 
     stakingToken.safeTransfer(address(migrator), _totalSupply);
@@ -141,11 +144,11 @@ contract TokenVault is BaseTokenVault {
       }
     }
 
+    if (reserve == 0) return;
+
     bytes memory data = abi.encode(address(stakingToken), feePool);
 
     uint256 ethBalanceBefore = address(this).balance;
-
-    if (reserve == 0) return;
 
     uint256 _reserve = reserve; // SLOAD
     reserve = 0;

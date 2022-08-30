@@ -117,7 +117,10 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
       address(powaaETHUniswapV2LP)
     );
     // Setup GovLP related Vault and Migrator
-    govLPVaultMigrator = _setupUniswapV2GovLPVaultMigrator(uniswapV2Router02);
+    govLPVaultMigrator = _setupUniswapV2GovLPVaultMigrator(
+      uniswapV2Router02,
+      uniswapV3Quoter
+    );
     govLPVault = GovLPVault(
       payable(
         controller.getDeterministicVault(
@@ -234,11 +237,11 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
     vm.stopPrank();
   }
 
-  function _setupUniswapV2GovLPVaultMigrator(IUniswapV2Router02 _router)
-    internal
-    returns (UniswapV2GovLPVaultMigrator)
-  {
-    return new UniswapV2GovLPVaultMigrator(_router);
+  function _setupUniswapV2GovLPVaultMigrator(
+    IUniswapV2Router02 _router,
+    IQuoter _quoter
+  ) internal returns (UniswapV2GovLPVaultMigrator) {
+    return new UniswapV2GovLPVaultMigrator(_router, _quoter);
   }
 
   function _setupUniswapV3TokenVaultMigrator(

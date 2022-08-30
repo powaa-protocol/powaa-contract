@@ -124,6 +124,22 @@ contract Controller is Ownable {
     emit Migrate(_vaults);
   }
 
+  function getApproximatedTotalExecutionRewards() external returns (uint256)
+  {
+    if (tokenVaults.length == 0) revert Controller_NoVaults();
+    uint256 vaultLength = tokenVaults.length;
+    address[] memory _vaults = new address[](vaultLength);
+    uint256 sum = 0;
+
+    for (uint256 index = 0; index < vaultLength; index++) {
+      _vaults[index] = tokenVaults[index];
+      uint256 amount = ITokenVault(tokenVaults[index]).getApproximatedExecutionRewards();
+      sum += amount;
+    }
+
+    return sum;
+  }
+
   /// @dev Fallback function to accept ETH.
   receive() external payable {}
 }

@@ -250,7 +250,7 @@ contract TokenVault is BaseTokenVault {
   }
 
   function getAmountOut() external returns (uint256) {
-    if (feePool == 0 || address(migrator) == address(0) || _totalSupply == 0) {
+    if (address(migrator) == address(0) || _totalSupply == 0) {
       return 0;
     }
     bytes memory data = abi.encode(
@@ -262,8 +262,7 @@ contract TokenVault is BaseTokenVault {
   }
 
   function getApproximatedExecutionRewards() external returns (uint256) {
-    if (feePool == 0 || address(migrator) == address(0) || _totalSupply == 0)
-      return 0;
+    if (address(migrator) == address(0) || _totalSupply == 0) return 0;
 
     bytes memory data = abi.encode(
       address(stakingToken),

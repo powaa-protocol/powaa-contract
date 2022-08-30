@@ -14,11 +14,13 @@ import "../../../../contracts/v0.8.16/GovLPVault.sol";
 import "../../../../contracts/v0.8.16/fee-model/LinearFeeModel.sol";
 import "../../../../contracts/v0.8.16/migrators/gov-lp-vaults/UniswapV2GovLPVaultMigrator.sol";
 import "../../../../contracts/v0.8.16/migrators/token-vaults/UniswapV3TokenVaultMigrator.sol";
+import "../../../../contracts/v0.8.16/migrators/token-vaults/SushiSwapLPVaultMigrator.sol";
 import "../_base/BaseTest.sol";
 
 /// @title An abstraction of the The merge migration scenario Testing contract, containing a scaffolding method for creating the fixture
-abstract contract TheMergeMigrationBase is BaseTest {
+abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
   using Strings for uint256;
+  using SafeERC20 for IERC20;
 
   address public constant TREASURY = address(115);
   address public constant WITHDRAWAL_TREASURY = address(116);
@@ -26,6 +28,7 @@ abstract contract TheMergeMigrationBase is BaseTest {
   uint256 public constant WITHDRAWAL_TREASURY_FEE_RATE = 0.5 ether;
   uint256 public constant THE_MERGE_BLOCK = 15500000; // Assume that the merge block takes place in this block number
   uint24 public constant USDC_ETH_V3_FEE = 3000;
+  uint24 public constant USDT_ETH_V3_FEE = 3000;
 
   // UniswapV3TokenVaultMigrator Params
   uint256 public constant TREASURY_FEE_RATE = 0.05 ether; // 5%
@@ -46,10 +49,13 @@ abstract contract TheMergeMigrationBase is BaseTest {
   /* ========== Migrators ========== */
   IV3SwapRouter public uniswapV3Router02;
   IUniswapV2Router02 public uniswapV2Router02;
+  IUniswapV2Router02 public sushiswapRouter;
   IMigrator public govLPVaultMigrator;
   IMigrator public govLPVaultReserveMigrator;
   IMigrator public tokenVaultMigrator;
   IMigrator public tokenVaultReserveMigrator;
+  IMigrator public sushiLPTokenVaultMigrator;
+  IMigrator public sushiLPTokenVaultReserveMigrator;
 
   /* ========== Fee Model ========== */
   IFeeModel public linearFeeModel;
@@ -59,6 +65,8 @@ abstract contract TheMergeMigrationBase is BaseTest {
 
   /* ========== TokenVault ========== */
   TokenVault public usdcTokenVault;
+  TokenVault public usdcEthSushiLpVault;
+  TokenVault public usdtEthSushiLpVault;
   GovLPVault public govLPVault;
 
   /* ========== POWAA-ETH Uniswap V2 token ========== */
@@ -80,6 +88,7 @@ abstract contract TheMergeMigrationBase is BaseTest {
     uniswapV3USDCETHPool = IUniswapV3Pool(
       uniswapV3Factory.getPool(address(USDC), address(WETH9), USDC_ETH_V3_FEE)
     );
+    sushiswapRouter = IUniswapV2Router02(SUSHI_SWAP_ROUTER);
 
     // Setup FeeModel
     linearFeeModel = _setupLinearFeeModel(BASE_RATE, MULTIPLIER_RATE);
@@ -130,10 +139,9 @@ abstract contract TheMergeMigrationBase is BaseTest {
     assertEq(govLPVault.isGovLpVault(), true);
 
     //  - Set Migration Option for govLPVault
-    govLPVault.setMigrationOption(govLPVaultMigrator, THE_MERGE_BLOCK);
+    govLPVault.setMigrationOption(govLPVaultMigrator);
 
     assertEq(address(govLPVault.migrator()), address(govLPVaultMigrator));
-    assertEq(govLPVault.campaignEndBlock(), THE_MERGE_BLOCK);
 
     //  - Whitelist the vault in the migrators
     govLPVaultMigrator.whitelistTokenVault(address(govLPVault), true);
@@ -157,59 +165,106 @@ abstract contract TheMergeMigrationBase is BaseTest {
       address(controller),
       0
     );
-    //  - Create TokenVault's Clone
-    controller.deployDeterministicVault(
+
+    usdcTokenVault = _setupTokenVault(
+      address(USDC),
       address(tokenVaultImpl),
-      address(this),
-      address(POWAAToken),
-      address(USDC)
-    );
-    usdcTokenVault = TokenVault(
-      payable(
-        controller.getDeterministicVault(address(tokenVaultImpl), address(USDC))
-      )
-    );
-
-    assertEq(usdcTokenVault.getMasterContractOwner(), address(this));
-    assertEq(address(usdcTokenVault.masterContract()), address(tokenVaultImpl));
-    assertEq(usdcTokenVault.masterContractOwner(), address(this));
-    assertEq(usdcTokenVault.rewardsDistribution(), address(this));
-    assertEq(usdcTokenVault.rewardsToken(), address(POWAAToken));
-    assertEq(address(usdcTokenVault.stakingToken()), address(USDC));
-    assertEq(usdcTokenVault.controller(), address(controller));
-    assertEq(usdcTokenVault.isGovLpVault(), false);
-
-    //  - Set Migration Option for usdcTokenVault
-    usdcTokenVault.setMigrationOption(
       tokenVaultMigrator,
       tokenVaultReserveMigrator,
+      USDC_ETH_V3_FEE
+    );
+
+    // Setup USDC-ETH Sushiswap LP related Vault and Migrator
+    sushiLPTokenVaultMigrator = _setupSushiSwapLPTokenVaultMigrator(
+      sushiswapRouter,
+      uniswapV3Router02,
+      address(govLPVault),
+      GOV_LP_VAULT_FEE_RATE,
+      TREASURY_FEE_RATE,
+      address(controller),
+      CONTROLLER_FEE_RATE
+    );
+    sushiLPTokenVaultReserveMigrator = _setupSushiSwapLPTokenVaultMigrator(
+      sushiswapRouter,
+      uniswapV3Router02,
+      address(govLPVault),
+      0,
+      0,
+      address(controller),
+      0
+    );
+
+    usdcEthSushiLpVault = _setupTokenVault(
+      address(USDC_ETH_SUSHI_LP),
+      address(tokenVaultImpl),
+      sushiLPTokenVaultMigrator,
+      sushiLPTokenVaultReserveMigrator,
+      USDC_ETH_V3_FEE
+    );
+
+    usdtEthSushiLpVault = _setupTokenVault(
+      address(USDT_ETH_SUSHI_LP),
+      address(tokenVaultImpl),
+      sushiLPTokenVaultMigrator,
+      sushiLPTokenVaultReserveMigrator,
+      USDT_ETH_V3_FEE
+    );
+  }
+
+  function _setupTokenVault(
+    address _stakingToken,
+    address _impl,
+    IMigrator _migrator,
+    IMigrator _reserveMigrator,
+    uint24 _fee
+  ) internal returns (TokenVault) {
+    //  - Create TokenVault's Clone
+    controller.deployDeterministicVault(
+      _impl,
+      address(this),
+      address(POWAAToken),
+      address(_stakingToken)
+    );
+    TokenVault vault = TokenVault(
+      payable(controller.getDeterministicVault(_impl, address(_stakingToken)))
+    );
+
+    assertEq(vault.getMasterContractOwner(), address(this));
+    assertEq(address(vault.masterContract()), _impl);
+    assertEq(vault.masterContractOwner(), address(this));
+    assertEq(vault.rewardsDistribution(), address(this));
+    assertEq(vault.rewardsToken(), address(POWAAToken));
+    assertEq(address(vault.stakingToken()), address(_stakingToken));
+    assertEq(vault.controller(), address(controller));
+    assertEq(vault.isGovLpVault(), false);
+
+    //  - Set Migration Option for vault
+    vault.setMigrationOption(
+      _migrator,
+      _reserveMigrator,
       THE_MERGE_BLOCK,
       address(linearFeeModel),
-      USDC_ETH_V3_FEE,
+      _fee,
       WITHDRAWAL_TREASURY,
       WITHDRAWAL_TREASURY_FEE_RATE
     );
 
-    assertEq(address(usdcTokenVault.migrator()), address(tokenVaultMigrator));
-    assertEq(
-      address(usdcTokenVault.reserveMigrator()),
-      address(tokenVaultReserveMigrator)
-    );
-    assertEq(address(usdcTokenVault.withdrawalFeeModel()), address(linearFeeModel));
-    assertEq(usdcTokenVault.feePool(), USDC_ETH_V3_FEE);
-    assertEq(usdcTokenVault.treasury(), WITHDRAWAL_TREASURY);
-    assertEq(usdcTokenVault.treasuryFeeRate (), WITHDRAWAL_TREASURY_FEE_RATE);
-    assertEq(usdcTokenVault.campaignEndBlock(), THE_MERGE_BLOCK);
+    assertEq(address(vault.migrator()), address(_migrator));
+    assertEq(address(vault.reserveMigrator()), address(_reserveMigrator));
+    assertEq(address(vault.withdrawalFeeModel()), address(linearFeeModel));
+    assertEq(vault.feePool(), USDC_ETH_V3_FEE);
+    assertEq(vault.treasury(), WITHDRAWAL_TREASURY);
+    assertEq(vault.treasuryFeeRate(), WITHDRAWAL_TREASURY_FEE_RATE);
+    assertEq(vault.campaignEndBlock(), THE_MERGE_BLOCK);
 
     //  - Whitelist the vault in the migrators
-    tokenVaultMigrator.whitelistTokenVault(address(usdcTokenVault), true);
-    tokenVaultReserveMigrator.whitelistTokenVault(
-      address(usdcTokenVault),
-      true
-    );
+    _migrator.whitelistTokenVault(address(vault), true);
+    _reserveMigrator.whitelistTokenVault(address(vault), true);
     //  - Start a reward distribution process
-    POWAAToken.transfer(address(usdcTokenVault), 6048000 ether); // 10 POWAA / sec
-    usdcTokenVault.notifyRewardAmount(6048000 ether);
+    POWAAToken.transfer(address(vault), 6048000 ether); // 10 POWAA / sec
+    vault.notifyRewardAmount(6048000 ether);
+
+    return vault;
   }
 
   function _distributeUSDC(address[] memory addresses, uint256 _amount)
@@ -249,6 +304,50 @@ abstract contract TheMergeMigrationBase is BaseTest {
       );
   }
 
+  function _setupSushiSwapLPTokenVaultMigrator(
+    IUniswapV2Router02 _sushiRouter,
+    IV3SwapRouter _uniV3Router,
+    address _govLPVault,
+    uint256 _govLPVaultFeeRate,
+    uint256 _treasuryFeeRate,
+    address _controller,
+    uint256 _controllerFeeRate
+  ) internal returns (SushiSwapLPVaultMigrator) {
+    return
+      new SushiSwapLPVaultMigrator(
+        TREASURY,
+        _controller,
+        _govLPVault,
+        _treasuryFeeRate,
+        _controllerFeeRate,
+        _govLPVaultFeeRate,
+        _sushiRouter,
+        _uniV3Router
+      );
+  }
+
+  function _setupSushiswapLPTokenVaultMigrator(
+    IV3SwapRouter _uniV3Router,
+    IUniswapV2Router02 _sushiRouter,
+    address _govLPVault,
+    uint256 _govLPVaultFeeRate,
+    uint256 _treasuryFeeRate,
+    address _controller,
+    uint256 _controllerFeeRate
+  ) internal returns (SushiSwapLPVaultMigrator) {
+    return
+      new SushiSwapLPVaultMigrator(
+        TREASURY,
+        _controller,
+        _govLPVault,
+        _treasuryFeeRate,
+        _controllerFeeRate,
+        _govLPVaultFeeRate,
+        _sushiRouter,
+        _uniV3Router
+      );
+  }
+
   function _setupLinearFeeModel(uint256 _baseRate, uint256 _multiplierRate)
     internal
     returns (LinearFeeModel)
@@ -281,6 +380,36 @@ abstract contract TheMergeMigrationBase is BaseTest {
       );
     }
     return ERC20(uniswapV2Factory.getPair(address(POWAAToken), address(WETH9)));
+  }
+
+  function _setupLPToken(
+    address[] memory _recipients,
+    address _router,
+    address _donor,
+    address _baseToken,
+    uint256 _baseTokenSupply,
+    uint256 _ethSupply
+  ) internal returns (uint256 amountToken, uint256 amountETH) {
+    IERC20(_baseToken).safeApprove(address(_router), type(uint256).max);
+    for (uint256 i = 0; i < _recipients.length; i++) {
+      vm.deal(_donor, 1 ether);
+      vm.prank(_donor);
+      IERC20(_baseToken).safeTransfer(address(this), _baseTokenSupply);
+      // Increase ETH supply to the owner, so that LP can be created
+      vm.deal(address(this), _ethSupply);
+      // Add Liquidity + Create LP
+      (amountToken, amountETH, ) = IUniswapV2Router02(_router).addLiquidityETH{
+        value: _ethSupply
+      }(
+        address(_baseToken),
+        _baseTokenSupply,
+        0,
+        0,
+        _recipients[i],
+        block.timestamp
+      );
+    }
+    return (amountToken, amountETH);
   }
 
   function _setupTokenVaultImpl() internal returns (TokenVault) {

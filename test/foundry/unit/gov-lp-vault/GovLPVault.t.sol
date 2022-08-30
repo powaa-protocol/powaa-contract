@@ -58,8 +58,7 @@ contract GovLPVault_Test is BaseGovLPVaultFixture {
   function _simulateMigrate(
     address _caller,
     uint256 _rewardDuration,
-    uint256 _rewardAmount,
-    uint256 _campaignEndBlock
+    uint256 _rewardAmount
   ) internal {
     // setting up
     fixture.govLPVault.setRewardsDuration(_rewardDuration);
@@ -68,15 +67,31 @@ contract GovLPVault_Test is BaseGovLPVaultFixture {
     fixture.govLPVault.notifyRewardAmount(_rewardAmount);
 
     fixture.govLPVault.setMigrationOption(
-      IMigrator(address(fixture.fakeMigrator)),
-      _campaignEndBlock
+      IMigrator(address(fixture.fakeMigrator))
     );
 
     vm.prank(_caller);
     fixture.govLPVault.migrate();
   }
 
-  function test_WhenParamsAreProperlySetUp_WhenChainIDNotEq1() external {
+  function testInitialize_WhenCallInitializeMultipleTimes() external {
+    GovLPVault vault = _setupGovLPVault(
+      address(fixture.rewardDistributor),
+      address(fixture.fakeRewardToken),
+      address(fixture.fakeGovLpToken),
+      address(fixture.controller)
+    );
+
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_AlreadyInitialized()"));
+    vault.initialize(
+      address(fixture.rewardDistributor),
+      address(fixture.fakeRewardToken),
+      address(fixture.fakeGovLpToken),
+      address(fixture.controller)
+    );
+  }
+
+  function testMigrate_WhenParamsAreProperlySetUp_WhenChainIDNotEq1() external {
     // users staking period
     fixture.fakeStakingToken.mint(ALICE, 500 ether);
     _simulateStake(ALICE, 500 ether);
@@ -91,12 +106,7 @@ contract GovLPVault_Test is BaseGovLPVaultFixture {
       address(fixture.govLPVault)
     );
 
-    _simulateMigrate(
-      address(fixture.controller),
-      10000 ether,
-      10000 ether,
-      10000
-    );
+    _simulateMigrate(address(fixture.controller), 1 days, 10000 ether);
 
     assertEq(1000 ether, address(fixture.govLPVault).balance);
     assertEq(
@@ -111,7 +121,7 @@ contract GovLPVault_Test is BaseGovLPVaultFixture {
     fixture.govLPVault.migrate();
   }
 
-  function test_WhenParamsAreProperlySetUp_WhenChainID1() external {
+  function testMigrate_WhenParamsAreProperlySetUp_WhenChainID1() external {
     // users staking period
     fixture.fakeStakingToken.mint(ALICE, 500 ether);
     _simulateStake(ALICE, 500 ether);
@@ -128,7 +138,7 @@ contract GovLPVault_Test is BaseGovLPVaultFixture {
       address(fixture.govLPVault)
     );
 
-    _simulateMigrate(address(this), 10000 ether, 10000 ether, 10000);
+    _simulateMigrate(address(this), 1 days, 10000 ether);
 
     assertEq(1000 ether, address(fixture.govLPVault).balance);
     assertEq(
@@ -142,7 +152,7 @@ contract GovLPVault_Test is BaseGovLPVaultFixture {
     fixture.govLPVault.migrate();
   }
 
-  function test_WhenCallerIsNotAnOwner_WhenChainID1() external {
+  function testMigrate_WhenCallerIsNotAnOwner_WhenChainID1() external {
     vm.chainId(1);
 
     vm.prank(fixture.controller);
@@ -151,10 +161,17 @@ contract GovLPVault_Test is BaseGovLPVaultFixture {
     fixture.govLPVault.migrate();
   }
 
-  function test_WhenCallerIsNotController_WhenChainIDNotEq1() external {
+  function testMigrate_WhenCallerIsNotController_WhenChainIDNotEq1() external {
     vm.expectRevert(abi.encodeWithSignature("TokenVault_NotController()"));
 
     fixture.govLPVault.migrate();
+  }
+
+  function testSetMigrationOption_WhenAllParamsAreCorrect() external {
+    vm.expectEmit(true, true, true, true);
+    emit SetMigrationOption(IMigrator(address(0)));
+
+    fixture.govLPVault.setMigrationOption(IMigrator(address(0)));
   }
 
   /// @dev Fallback function to accept ETH.

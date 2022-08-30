@@ -20,6 +20,7 @@ abstract contract BaseGovLPVaultFixture is BaseTest {
     uint256 returnPOWAAAmount
   );
   event ReduceReserve(uint256 reserveAmount, uint256 reducedETHAmount);
+  event SetMigrationOption(IMigrator migrator);
 
   struct GovLPVaultTestState {
     GovLPVault govLPVault;

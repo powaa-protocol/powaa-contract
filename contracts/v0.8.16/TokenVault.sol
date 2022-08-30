@@ -20,6 +20,8 @@ contract TokenVault is BaseTokenVault {
   uint24 public feePool; // applicable only for token vault (gov lp vault doesn't have a feepool)
   address public treasury;
   uint256 public treasuryFeeRate;
+  uint256 public campaignStartBlock;
+  uint256 public campaignEndBlock;
 
   /* ========== EVENTS ========== */
   event Migrate(uint256 stakingTokenAmount, uint256 vaultETHAmount);
@@ -190,6 +192,34 @@ contract TokenVault is BaseTokenVault {
     msg.sender.safeTransferETH(claimable);
 
     emit ClaimETH(msg.sender, claimable);
+  }
+
+  function notifyRewardAmount(uint256 _reward)
+    external
+    override
+    onlyRewardsDistribution
+    updateReward(address(0))
+  {
+    if (block.timestamp >= periodFinish) {
+      campaignStartBlock = block.number;
+      rewardRate = _reward.div(rewardsDuration);
+    } else {
+      uint256 remaining = periodFinish.sub(block.timestamp);
+      uint256 leftover = remaining.mul(rewardRate);
+      rewardRate = _reward.add(leftover).div(rewardsDuration);
+    }
+
+    // Ensure the provided reward amount is not more than the balance in the contract.
+    // This keeps the reward rate in the right range, preventing overflows due to
+    // very high values of rewardRate in the earned and rewardsPerToken functions;
+    // Reward + leftover must be less than 2^256 / 10^18 to avoid overflow.
+    uint256 balance = IERC20(rewardsToken).balanceOf(address(this));
+    if (rewardRate > balance.div(rewardsDuration))
+      revert TokenVault_ProvidedRewardTooHigh();
+
+    lastUpdateTime = block.timestamp;
+    periodFinish = block.timestamp.add(rewardsDuration);
+    emit RewardAdded(_reward);
   }
 
   function withdraw(uint256 _amount)

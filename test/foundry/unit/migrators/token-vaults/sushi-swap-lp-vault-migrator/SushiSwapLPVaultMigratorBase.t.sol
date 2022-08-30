@@ -9,6 +9,7 @@ import "../../../_mock/MockUniswapV2Router01.sol";
 import "../../../_mock/MockV3SwapRouter.sol";
 import "../../../_mock/MockETHLpToken.sol";
 import "../../../_mock/MockWETH9.sol";
+import "../../../_mock/MockQuoter.sol";
 import "../../../../../../contracts/v0.8.16/migrators/token-vaults/SushiSwapLPVaultMigrator.sol";
 import "../../../../../../contracts/v0.8.16/interfaces/apis/IUniswapV2Router02.sol";
 
@@ -18,6 +19,7 @@ abstract contract SushiSwapLPVaultMigratorBaseTest is BaseTest {
 
   MockUniswapV2Router01 internal fakeSushiSwapRouter;
   MockV3SwapRouter internal fakeUniswapRouter;
+  MockQuoter internal fakeQuoter;
 
   MockERC20 internal mockBaseToken;
   MockETHLpToken internal mockLpToken;
@@ -35,6 +37,7 @@ abstract contract SushiSwapLPVaultMigratorBaseTest is BaseTest {
   function setUp() public virtual {
     fakeSushiSwapRouter = new MockUniswapV2Router01();
     fakeUniswapRouter = new MockV3SwapRouter();
+    fakeQuoter = new MockQuoter();
 
     migrator = _setupMigrator(0.1 ether, 0.5 ether, 0.1 ether);
 
@@ -68,7 +71,8 @@ abstract contract SushiSwapLPVaultMigratorBaseTest is BaseTest {
       _controllerFeeRate,
       _govLPTokenVaultFeeRate,
       IUniswapV2Router02(address(fakeSushiSwapRouter)),
-      IV3SwapRouter(address(fakeUniswapRouter))
+      IV3SwapRouter(address(fakeUniswapRouter)),
+      IQuoter(address(fakeQuoter))
     );
 
     return _migrator;

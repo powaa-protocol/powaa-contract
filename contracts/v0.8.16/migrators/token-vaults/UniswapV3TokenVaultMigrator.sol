@@ -11,6 +11,8 @@ import "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 
 import "../../../../lib/solmate/src/utils/SafeTransferLib.sol";
 import "../../../../lib/solmate/src/utils/FixedPointMathLib.sol";
+
+import "../../interfaces/apis/IQuoter.sol";
 import "../../interfaces/IMigrator.sol";
 import "../../interfaces/IWETH9.sol";
 
@@ -31,6 +33,7 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   address public govLPTokenVault;
   address public controller;
   IV3SwapRouter public router;
+  IQuoter public quoter;
 
   mapping(address => bool) public tokenVaultOK;
 
@@ -55,7 +58,8 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     uint256 _treasuryFeeRate,
     uint256 _controllerFeeRate,
     uint256 _govLPTokenVaultFeeRate,
-    IV3SwapRouter _router
+    IV3SwapRouter _router,
+    IQuoter _quoter
   ) {
     if (
       _govLPTokenVaultFeeRate + _treasuryFeeRate + _controllerFeeRate >= 1e18
@@ -70,6 +74,8 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     controllerFeeRate = _controllerFeeRate;
     govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
     router = _router;
+
+    quoter = _quoter;
   }
 
   /* ========== MODIFIERS ========== */
@@ -141,6 +147,33 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     msg.sender.safeTransferETH(vaultReward);
 
     emit Execute(vaultReward, treasuryFee, controllerFee, govLPTokenVaultFee);
+  }
+
+  function getAmountOut(bytes calldata _data) public returns (uint256) {
+    (address token, uint24 poolFee, uint256 _amount) = abi.decode(
+      _data,
+      (address, uint24, uint256)
+    );
+
+    uint256 amountOut = quoter.quoteExactInputSingle(
+      token,
+      WETH9,
+      poolFee,
+      _amount,
+      0
+    );
+
+    return amountOut;
+  }
+
+  function getApproximatedExecutionRewards(bytes calldata _data)
+    external
+    returns (uint256)
+  {
+    uint256 totalEth = getAmountOut(_data);
+    uint256 controllerFee = controllerFeeRate.mulWadDown(totalEth);
+
+    return controllerFee;
   }
 
   /// @dev Fallback function to accept ETH.

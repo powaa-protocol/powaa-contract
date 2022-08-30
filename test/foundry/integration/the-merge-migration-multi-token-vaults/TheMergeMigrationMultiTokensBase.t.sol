@@ -50,6 +50,8 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
   IV3SwapRouter public uniswapV3Router02;
   IUniswapV2Router02 public uniswapV2Router02;
   IUniswapV2Router02 public sushiswapRouter;
+  IQuoter public uniswapQuoter;
+
   IMigrator public govLPVaultMigrator;
   IMigrator public govLPVaultReserveMigrator;
   IMigrator public tokenVaultMigrator;
@@ -90,6 +92,8 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
     );
     sushiswapRouter = IUniswapV2Router02(SUSHI_SWAP_ROUTER);
 
+    uniswapQuoter = IQuoter(UNISWAP_V3_QUOTER);
+
     // Setup FeeModel
     linearFeeModel = _setupLinearFeeModel(BASE_RATE, MULTIPLIER_RATE);
     // Setup Controller
@@ -118,7 +122,10 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
       address(powaaETHUniswapV2LP)
     );
     // Setup GovLP related Vault and Migrator
-    govLPVaultMigrator = _setupUniswapV2GovLPVaultMigrator(uniswapV2Router02);
+    govLPVaultMigrator = _setupUniswapV2GovLPVaultMigrator(
+      uniswapV2Router02,
+      uniswapQuoter
+    );
     govLPVault = GovLPVault(
       payable(
         controller.getDeterministicVault(
@@ -151,6 +158,7 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
     // Setup USDCToken related Vault and Migrator
     tokenVaultMigrator = _setupUniswapV3TokenVaultMigrator(
       uniswapV3Router02,
+      uniswapQuoter,
       address(govLPVault),
       GOV_LP_VAULT_FEE_RATE,
       TREASURY_FEE_RATE,
@@ -159,6 +167,7 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
     );
     tokenVaultReserveMigrator = _setupUniswapV3TokenVaultMigrator(
       uniswapV3Router02,
+      uniswapQuoter,
       address(govLPVault),
       0,
       0,
@@ -178,6 +187,7 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
     sushiLPTokenVaultMigrator = _setupSushiSwapLPTokenVaultMigrator(
       sushiswapRouter,
       uniswapV3Router02,
+      uniswapQuoter,
       address(govLPVault),
       GOV_LP_VAULT_FEE_RATE,
       TREASURY_FEE_RATE,
@@ -187,6 +197,7 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
     sushiLPTokenVaultReserveMigrator = _setupSushiSwapLPTokenVaultMigrator(
       sushiswapRouter,
       uniswapV3Router02,
+      uniswapQuoter,
       address(govLPVault),
       0,
       0,
@@ -277,15 +288,16 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
     vm.stopPrank();
   }
 
-  function _setupUniswapV2GovLPVaultMigrator(IUniswapV2Router02 _router)
-    internal
-    returns (UniswapV2GovLPVaultMigrator)
-  {
-    return new UniswapV2GovLPVaultMigrator(_router);
+  function _setupUniswapV2GovLPVaultMigrator(
+    IUniswapV2Router02 _router,
+    IQuoter _qouter
+  ) internal returns (UniswapV2GovLPVaultMigrator) {
+    return new UniswapV2GovLPVaultMigrator(_router, _qouter);
   }
 
   function _setupUniswapV3TokenVaultMigrator(
     IV3SwapRouter _router,
+    IQuoter _qouter,
     address _govLPVault,
     uint256 _govLPVaultFeeRate,
     uint256 _treasuryFeeRate,
@@ -300,13 +312,15 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
         _treasuryFeeRate,
         _controllerFeeRate,
         _govLPVaultFeeRate,
-        _router
+        _router,
+        _qouter
       );
   }
 
   function _setupSushiSwapLPTokenVaultMigrator(
     IUniswapV2Router02 _sushiRouter,
     IV3SwapRouter _uniV3Router,
+    IQuoter _qouter,
     address _govLPVault,
     uint256 _govLPVaultFeeRate,
     uint256 _treasuryFeeRate,
@@ -322,13 +336,15 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
         _controllerFeeRate,
         _govLPVaultFeeRate,
         _sushiRouter,
-        _uniV3Router
+        _uniV3Router,
+        _qouter
       );
   }
 
   function _setupSushiswapLPTokenVaultMigrator(
     IV3SwapRouter _uniV3Router,
     IUniswapV2Router02 _sushiRouter,
+    IQuoter _qouter,
     address _govLPVault,
     uint256 _govLPVaultFeeRate,
     uint256 _treasuryFeeRate,
@@ -344,7 +360,8 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
         _controllerFeeRate,
         _govLPVaultFeeRate,
         _sushiRouter,
-        _uniV3Router
+        _uniV3Router,
+        _qouter
       );
   }
 

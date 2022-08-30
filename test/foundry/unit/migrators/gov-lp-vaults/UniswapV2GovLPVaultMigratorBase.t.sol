@@ -5,6 +5,7 @@ import "../../_base/BaseTest.sol";
 import "../../_mock/MockERC20.sol";
 import "../../_mock/MockETHLpToken.sol";
 import "../../_mock/MockUniswapV2Router01.sol";
+import "../../_mock/MockQuoter.sol";
 import "mock-contract/MockContract.sol";
 import "../../../../../contracts/v0.8.16/interfaces/apis/IUniswapV2Router02.sol";
 import "../../../../../contracts/v0.8.16/migrators/gov-lp-vaults/UniswapV2GovLPVaultMigrator.sol";
@@ -15,6 +16,7 @@ abstract contract UniswapV2GovLPVaultMigratorBaseTest is BaseTest {
   using SafeTransferLib for address;
 
   MockUniswapV2Router01 internal mockRouter;
+  MockQuoter internal mockQuoter;
   MockETHLpToken internal mockLp;
   MockERC20 internal mockBaseToken;
   MockERC20 internal mockToken;
@@ -24,12 +26,14 @@ abstract contract UniswapV2GovLPVaultMigratorBaseTest is BaseTest {
   /// @dev Foundry's setUp method
   function setUp() public virtual {
     mockRouter = new MockUniswapV2Router01();
+    mockQuoter = new MockQuoter();
 
     mockToken = _setupFakeERC20("MockToken", "MT");
     mockLp = _setupMockLPToken("Gov LP Token", "G-LP");
 
     uniswapV2GovLPVaultMigrator = _setupUniswapV2GovLPVaultMigrator(
-      IUniswapV2Router02(address(mockRouter))
+      IUniswapV2Router02(address(mockRouter)),
+      IQuoter(address(mockQuoter))
     );
 
     mockRouter.mockMapBaseTokenWithLPToken(
@@ -48,12 +52,13 @@ abstract contract UniswapV2GovLPVaultMigratorBaseTest is BaseTest {
     vm.deal(address(mockRouter), 1e18);
   }
 
-  function _setupUniswapV2GovLPVaultMigrator(IUniswapV2Router02 _router)
-    internal
-    returns (UniswapV2GovLPVaultMigrator)
-  {
+  function _setupUniswapV2GovLPVaultMigrator(
+    IUniswapV2Router02 _router,
+    IQuoter _quoter
+  ) internal returns (UniswapV2GovLPVaultMigrator) {
     UniswapV2GovLPVaultMigrator _uniswapV2GovLPVaultMigrator = new UniswapV2GovLPVaultMigrator(
-        _router
+        _router,
+        _quoter
       );
 
     return _uniswapV2GovLPVaultMigrator;

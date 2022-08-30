@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -10,8 +11,9 @@ import "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 
 import "../../../../lib/solmate/src/utils/SafeTransferLib.sol";
 import "../../../../lib/solmate/src/utils/FixedPointMathLib.sol";
-import "../../interfaces/IMigrator.sol";
 import "../../interfaces/apis/IUniswapV2Router02.sol";
+import "../../interfaces/apis/IQuoter.sol";
+import "../../interfaces/IMigrator.sol";
 import "../../interfaces/ILp.sol";
 import "../../interfaces/IWETH9.sol";
 
@@ -19,6 +21,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeTransferLib for address;
   using FixedPointMathLib for uint256;
   using SafeERC20 for IERC20;
+  using SafeMath for uint256;
 
   /* ========== CONSTANT ========== */
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -34,6 +37,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
   IUniswapV2Router02 public sushiSwapRouter;
   IV3SwapRouter public uniswapRouter;
+
+  IQuoter public quoter;
 
   mapping(address => bool) public tokenVaultOK;
 
@@ -58,7 +63,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     uint256 _controllerFeeRate,
     uint256 _govLPTokenVaultFeeRate,
     IUniswapV2Router02 _sushiSwapRouter,
-    IV3SwapRouter _uniswapRouter
+    IV3SwapRouter _uniswapRouter,
+    IQuoter _quoter
   ) {
     if (
       _govLPTokenVaultFeeRate + _treasuryFeeRate + _controllerFeeRate >= 1e18
@@ -75,6 +81,8 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
     sushiSwapRouter = _sushiSwapRouter;
     uniswapRouter = _uniswapRouter;
+
+    quoter = _quoter;
   }
 
   /* ========== MODIFIERS ========== */
@@ -155,6 +163,48 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       IWETH9(WETH9).withdraw(balanceWETH9);
       _recipient.safeTransferETH(balanceWETH9);
     }
+  }
+
+  function getAmountOut(bytes calldata _data) public returns (uint256) {
+    (address lpToken, uint24 poolFee, uint256 stakeAmount) = abi.decode(
+      _data,
+      (address, uint24, uint256)
+    );
+    address baseToken = address(ILp(lpToken).token0()) != address(WETH9)
+      ? address(ILp(lpToken).token0())
+      : address(ILp(lpToken).token1());
+
+    (uint112 reserve0, uint112 reserve1, ) = ILp(lpToken).getReserves();
+    (uint112 baseTokenReserve, uint112 ethReserve) = address(
+      ILp(lpToken).token0()
+    ) != address(WETH9)
+      ? (reserve0, reserve1)
+      : (reserve1, reserve0);
+
+    uint256 ratio = stakeAmount.divWadDown(ILp(lpToken).totalSupply());
+    uint256 baseTokenLiquidity = uint256(baseTokenReserve).mulWadDown(ratio);
+    uint256 ethLiquidity = uint256(ethReserve).mulWadDown(ratio);
+
+    uint256 amountOut = quoter.quoteExactInputSingle(
+      baseToken,
+      WETH9,
+      poolFee,
+      baseTokenLiquidity,
+      0
+    );
+
+    uint256 totalEth = amountOut.add(ethLiquidity);
+    return totalEth;
+  }
+
+  function getApproximatedExecutionRewards(bytes calldata _data)
+    external
+    returns (uint256)
+  {
+    uint256 totalEth = getAmountOut(_data);
+    uint256 controllerFee = controllerFeeRate.mulWadDown(totalEth);
+
+    return controllerFee;
   }
 
   /// @dev Fallback function to accept ETH.

@@ -8,6 +8,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "../../../../contracts/v0.8.16/interfaces/apis/IUniswapV2Router02.sol";
 import "../../../../contracts/v0.8.16/interfaces/apis/IUniswapV2Factory.sol";
+import "../../../../contracts/v0.8.16/interfaces/apis/IQuoter.sol";
 import "../../../../contracts/v0.8.16/Controller.sol";
 import "../../../../contracts/v0.8.16/TokenVault.sol";
 import "../../../../contracts/v0.8.16/GovLPVault.sol";
@@ -47,6 +48,9 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
   /* ========== Migrators ========== */
   IV3SwapRouter public uniswapV3Router02;
   IUniswapV2Router02 public uniswapV2Router02;
+
+  IQuoter public uniswapV3Quoter;
+
   IMigrator public govLPVaultMigrator;
   IMigrator public govLPVaultReserveMigrator;
   IMigrator public tokenVaultMigrator;
@@ -76,6 +80,9 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
     // Setup wrap addresses to entities
     uniswapV3Router02 = IV3SwapRouter(UNISWAP_V3_SWAP_ROUTER_02);
     uniswapV2Router02 = IUniswapV2Router02(UNISWAP_V2_ROUTER_02);
+
+    uniswapV3Quoter = IQuoter(UNISWAP_V3_QUOTER);
+
     uniswapV2Factory = IUniswapV2Factory(UNISWAP_V2_FACTORY);
     uniswapV3Factory = IUniswapV3Factory(UNISWAP_V3_FACTORY_ADDRESS);
     uniswapV3USDCETHPool = IUniswapV3Pool(
@@ -110,7 +117,10 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
       address(powaaETHUniswapV2LP)
     );
     // Setup GovLP related Vault and Migrator
-    govLPVaultMigrator = _setupUniswapV2GovLPVaultMigrator(uniswapV2Router02);
+    govLPVaultMigrator = _setupUniswapV2GovLPVaultMigrator(
+      uniswapV2Router02,
+      uniswapV3Quoter
+    );
     govLPVault = GovLPVault(
       payable(
         controller.getDeterministicVault(
@@ -143,6 +153,7 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
     // Setup USDCToken related Vault and Migrator
     tokenVaultMigrator = _setupUniswapV3TokenVaultMigrator(
       uniswapV3Router02,
+      uniswapV3Quoter,
       address(govLPVault),
       GOV_LP_VAULT_FEE_RATE,
       TREASURY_FEE_RATE,
@@ -151,6 +162,7 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
     );
     tokenVaultReserveMigrator = _setupUniswapV3TokenVaultMigrator(
       uniswapV3Router02,
+      uniswapV3Quoter,
       address(govLPVault),
       0,
       0,
@@ -225,15 +237,16 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
     vm.stopPrank();
   }
 
-  function _setupUniswapV2GovLPVaultMigrator(IUniswapV2Router02 _router)
-    internal
-    returns (UniswapV2GovLPVaultMigrator)
-  {
-    return new UniswapV2GovLPVaultMigrator(_router);
+  function _setupUniswapV2GovLPVaultMigrator(
+    IUniswapV2Router02 _router,
+    IQuoter _quoter
+  ) internal returns (UniswapV2GovLPVaultMigrator) {
+    return new UniswapV2GovLPVaultMigrator(_router, _quoter);
   }
 
   function _setupUniswapV3TokenVaultMigrator(
     IV3SwapRouter _router,
+    IQuoter _quoter,
     address _govLPVault,
     uint256 _govLPVaultFeeRate,
     uint256 _treasuryFeeRate,
@@ -248,7 +261,8 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
         _treasuryFeeRate,
         _controllerFeeRate,
         _govLPVaultFeeRate,
-        _router
+        _router,
+        _quoter
       );
   }
 

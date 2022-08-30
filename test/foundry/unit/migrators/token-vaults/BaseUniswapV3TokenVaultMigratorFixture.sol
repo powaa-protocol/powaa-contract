@@ -5,6 +5,7 @@ import "../../_base/BaseTest.sol";
 import "../../_mock/MockERC20.sol";
 import "../../_mock/MockV3SwapRouter.sol";
 import "../../_mock/MockTokenVault.sol";
+import "../../_mock/MockQuoter.sol";
 import "../../../../../contracts/v0.8.16/migrators/token-vaults/UniswapV3TokenVaultMigrator.sol";
 
 abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
@@ -16,6 +17,7 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
     MockV3SwapRouter fakeSwapRouter;
     MockTokenVault fakeTokenVault;
     MockERC20 fakeStakingToken;
+    MockQuoter fakeQuoter;
   }
 
   event Execute(
@@ -53,7 +55,8 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
     uint256 _treasuryFeeRate,
     uint256 _controllerFeeRate,
     uint256 _govLPTokenVaultFeeRate,
-    IV3SwapRouter _router
+    IV3SwapRouter _router,
+    IQuoter _quoter
   ) internal returns (UniswapV3TokenVaultMigrator) {
     UniswapV3TokenVaultMigrator _impl = new UniswapV3TokenVaultMigrator(
       _treasury,
@@ -62,7 +65,8 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
       _treasuryFeeRate,
       _controllerFeeRate,
       _govLPTokenVaultFeeRate,
-      _router
+      _router,
+      _quoter
     );
 
     return _impl;
@@ -82,6 +86,8 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
     _state.fakeTokenVault = new MockTokenVault();
     _state.fakeStakingToken = _setupFakeERC20("Fake Token", "FT");
 
+    _state.fakeQuoter = new MockQuoter();
+
     _state.migrator = _setupUniswapV3TokenVaultMigrator(
       _state.treasury,
       _state.controller,
@@ -89,7 +95,8 @@ abstract contract BaseUniswapV3TokenVaultMigratorFixture is BaseTest {
       _treasuryFeeRate,
       _controllerFeeRate,
       _govLPTokenVaultFeeRate,
-      IV3SwapRouter(address(_state.fakeSwapRouter))
+      IV3SwapRouter(address(_state.fakeSwapRouter)),
+      IQuoter(address(_state.fakeQuoter))
     );
 
     return _state;

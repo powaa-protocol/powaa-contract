@@ -38,7 +38,8 @@ contract UniswapV3TokenVaultMigrator_Test is
       govLPTokenVault: _fixture.govLPTokenVault,
       fakeSwapRouter: _fixture.fakeSwapRouter,
       fakeTokenVault: _fixture.fakeTokenVault,
-      fakeStakingToken: _fixture.fakeStakingToken
+      fakeStakingToken: _fixture.fakeStakingToken,
+      fakeQuoter: _fixture.fakeQuoter
     });
 
     vm.expectEmit(true, true, true, true);

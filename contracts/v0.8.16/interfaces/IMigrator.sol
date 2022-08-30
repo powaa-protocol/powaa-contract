@@ -5,4 +5,10 @@ interface IMigrator {
   function execute(bytes calldata data) external;
 
   function whitelistTokenVault(address tokenVault, bool isOk) external;
+
+  function getAmountOut(bytes calldata _data) external returns (uint256);
+
+  function getApproximatedExecutionRewards(bytes calldata _data)
+    external
+    returns (uint256);
 }

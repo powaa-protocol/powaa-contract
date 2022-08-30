@@ -34,6 +34,8 @@ contract Config {
     0x1F98431c8aD98523631AE4a59f267346ea31F984;
   address public constant UNISWAP_V3_SWAP_ROUTER_02 =
     0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
+  address public constant UNISWAP_V3_QUOTER =
+    0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
 
   // Random USDC Whale Address
   address public constant USDC_PHILANTHROPIST =

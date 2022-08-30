@@ -9,6 +9,8 @@ interface ILp {
 
   function token1() external view returns (IERC20);
 
+  function totalSupply() external view returns (uint256);
+
   function getReserves()
     external
     view

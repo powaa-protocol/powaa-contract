@@ -20,6 +20,8 @@ contract TokenVault is BaseTokenVault {
   uint24 public feePool; // applicable only for token vault (gov lp vault doesn't have a feepool)
   address public treasury;
   uint256 public treasuryFeeRate;
+  uint256 public campaignStartBlock;
+  uint256 public campaignEndBlock;
 
   /* ========== EVENTS ========== */
   event Migrate(uint256 stakingTokenAmount, uint256 vaultETHAmount);
@@ -56,12 +58,15 @@ contract TokenVault is BaseTokenVault {
     address _stakingToken,
     address _controller
   ) public override {
+    if (isInitialized) revert TokenVault_AlreadyInitialized();
+
     rewardsToken = _rewardsToken;
     stakingToken = IERC20(_stakingToken);
     rewardsDistribution = _rewardsDistribution;
     controller = _controller;
     rewardsDuration = 7 days; // default 7 days
     isGovLpVault = false;
+    isInitialized = true;
   }
 
   /* ========== ADMIN FUNCTIONS ========== */
@@ -75,7 +80,7 @@ contract TokenVault is BaseTokenVault {
     address _treasury,
     uint256 _treasuryFeeRate
   ) external onlyMasterContractOwner {
-    if (treasuryFeeRate >= 1 ether) {
+    if (_treasuryFeeRate >= 1 ether) {
       revert TokenVault_InvalidTreasuryFeeRate();
     }
     if (block.number >= _campaignEndBlock) {
@@ -115,6 +120,9 @@ contract TokenVault is BaseTokenVault {
     }
 
     isMigrated = true;
+
+    if (_totalSupply == 0) return;
+
     bytes memory data = abi.encode(address(stakingToken), feePool);
 
     stakingToken.safeTransfer(address(migrator), _totalSupply);
@@ -138,11 +146,11 @@ contract TokenVault is BaseTokenVault {
       }
     }
 
+    if (reserve == 0) return;
+
     bytes memory data = abi.encode(address(stakingToken), feePool);
 
     uint256 ethBalanceBefore = address(this).balance;
-
-    if (reserve == 0) return;
 
     uint256 _reserve = reserve; // SLOAD
     reserve = 0;
@@ -184,6 +192,34 @@ contract TokenVault is BaseTokenVault {
     msg.sender.safeTransferETH(claimable);
 
     emit ClaimETH(msg.sender, claimable);
+  }
+
+  function notifyRewardAmount(uint256 _reward)
+    external
+    override
+    onlyRewardsDistribution
+    updateReward(address(0))
+  {
+    if (block.timestamp >= periodFinish) {
+      campaignStartBlock = block.number;
+      rewardRate = _reward.div(rewardsDuration);
+    } else {
+      uint256 remaining = periodFinish.sub(block.timestamp);
+      uint256 leftover = remaining.mul(rewardRate);
+      rewardRate = _reward.add(leftover).div(rewardsDuration);
+    }
+
+    // Ensure the provided reward amount is not more than the balance in the contract.
+    // This keeps the reward rate in the right range, preventing overflows due to
+    // very high values of rewardRate in the earned and rewardsPerToken functions;
+    // Reward + leftover must be less than 2^256 / 10^18 to avoid overflow.
+    uint256 balance = IERC20(rewardsToken).balanceOf(address(this));
+    if (rewardRate > balance.div(rewardsDuration))
+      revert TokenVault_ProvidedRewardTooHigh();
+
+    lastUpdateTime = block.timestamp;
+    periodFinish = block.timestamp.add(rewardsDuration);
+    emit RewardAdded(_reward);
   }
 
   function withdraw(uint256 _amount)

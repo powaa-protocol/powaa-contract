@@ -45,8 +45,11 @@ abstract contract BaseTest is Test, Config {
 
   /// @dev 3rd-party contracts
   ERC20 public USDC;
+  ERC20 public USDT;
   ERC20 public DAI;
   ERC20 public WETH9;
+  ERC20 public USDC_ETH_SUSHI_LP;
+  ERC20 public USDT_ETH_SUSHI_LP;
 
   constructor() {
     proxyAdmin = _setupProxyAdmin();
@@ -61,7 +64,10 @@ abstract contract BaseTest is Test, Config {
 
     // setup: wrap addresses to entities
     USDC = ERC20(USDC_ADDRESS);
+    USDT = ERC20(USDT_ADDRESS);
     WETH9 = ERC20(WETH9_ADDRESS);
+    USDC_ETH_SUSHI_LP = ERC20(USDC_ETH_SUSHI_LP_ADDRESS);
+    USDT_ETH_SUSHI_LP = ERC20(USDT_ETH_SUSHI_LP_ADDRESS);
 
     // deploy: POWAA
     POWAAToken = _setupPOWAAToken(POWAA_TOTAL_SUPPLY);

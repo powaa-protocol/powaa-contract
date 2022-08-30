@@ -11,6 +11,14 @@ contract MockETHLpToken is MockERC20 {
   IERC20 public token0;
   IERC20 public token1;
 
+  struct LpReservesState {
+    uint112 reserve0;
+    uint112 reserve1;
+    uint32 blockTimestampLast;
+  }
+
+  LpReservesState public reserves;
+
   constructor(IERC20 _token) {
     if (address(_token) < WETH9) {
       token0 = _token;
@@ -19,5 +27,45 @@ contract MockETHLpToken is MockERC20 {
       token0 = IERC20(WETH9);
       token1 = _token;
     }
+  }
+
+  function mockSetReserves(uint112 baseTokenReserve, uint112 ethReserve)
+    public
+  {
+    uint112 _reserve0;
+    uint112 _reserve1;
+    if (address(token0) == WETH9) {
+      _reserve0 = ethReserve;
+      _reserve1 = baseTokenReserve;
+    } else {
+      _reserve0 = baseTokenReserve;
+      _reserve1 = ethReserve;
+    }
+
+    reserves = MockETHLpToken.LpReservesState({
+      reserve0: _reserve0,
+      reserve1: _reserve1,
+      blockTimestampLast: 0 // this is unused
+    });
+  }
+
+  function mockGetBaseToken() public returns (address) {
+    if (address(token0) == WETH9) {
+      return address(token1);
+    } else {
+      return address(token0);
+    }
+  }
+
+  function getReserves()
+    external
+    view
+    returns (
+      uint112,
+      uint112,
+      uint32
+    )
+  {
+    return (reserves.reserve0, reserves.reserve1, reserves.blockTimestampLast);
   }
 }

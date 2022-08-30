@@ -105,9 +105,9 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       ? (reserve0, reserve1)
       : (reserve1, reserve0);
 
-    uint256 ratio = stakeAmount / ILp(lpToken).totalSupply();
-    uint256 baseTokenLiquidity = baseTokenReserve * ratio;
-    uint256 ethLiquidity = ethReserve * ratio;
+    uint256 ratio = stakeAmount.div(ILp(lpToken).totalSupply());
+    uint256 baseTokenLiquidity = uint256(baseTokenReserve).mul(ratio);
+    uint256 ethLiquidity = uint256(ethReserve).mul(ratio);
 
     uint256 amountOut = quoter.quoteExactInputSingle(
       baseToken,

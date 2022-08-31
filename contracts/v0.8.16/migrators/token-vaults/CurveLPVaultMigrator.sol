@@ -1,8 +1,7 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-3.0
 
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -11,19 +10,20 @@ import "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 
 import "../../../../lib/solmate/src/utils/SafeTransferLib.sol";
 import "../../../../lib/solmate/src/utils/FixedPointMathLib.sol";
+import "../../interfaces/IMigrator.sol";
+import "../../interfaces/apis/ICurveFiStableSwap.sol";
 import "../../interfaces/apis/IUniswapV2Router02.sol";
 import "../../interfaces/apis/IQuoter.sol";
-import "../../interfaces/IMigrator.sol";
 import "../../interfaces/ILp.sol";
 import "../../interfaces/IWETH9.sol";
 
-contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
+contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeTransferLib for address;
   using FixedPointMathLib for uint256;
   using SafeERC20 for IERC20;
-  using SafeMath for uint256;
 
   /* ========== CONSTANT ========== */
+  address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
   /* ========== STATE VARIABLES ========== */
@@ -35,24 +35,23 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   address public govLPTokenVault;
   address public controller;
 
-  IUniswapV2Router02 public sushiSwapRouter;
   IV3SwapRouter public uniswapRouter;
-
   IQuoter public quoter;
 
   mapping(address => bool) public tokenVaultOK;
+  mapping(address => ICurveFiStableSwap) public tokenVaultPoolRouter;
+  mapping(address => uint24) public poolUnderlyingCount;
 
   /* ========== EVENTS ========== */
   event Execute(
     uint256 vaultReward,
-    uint256 treasuryReward,
-    uint256 controllerReward,
-    uint256 govLPTokenVaultReward
+    uint256 govLPTokenVaultReward,
+    uint256 treasuryReward
   );
 
   /* ========== ERRORS ========== */
-  error SushiSwapLPVaultMigrator_OnlyWhitelistedTokenVault();
-  error SushiSwapLPVaultMigrator_InvalidFeeRate();
+  error CurveLPVaultMigrator_OnlyWhitelistedTokenVault();
+  error CurveLPVaultMigrator_InvalidFeeRate();
 
   /* ========== CONSTRUCTOR ========== */
   constructor(
@@ -62,26 +61,22 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     uint256 _treasuryFeeRate,
     uint256 _controllerFeeRate,
     uint256 _govLPTokenVaultFeeRate,
-    IUniswapV2Router02 _sushiSwapRouter,
     IV3SwapRouter _uniswapRouter,
     IQuoter _quoter
   ) {
-    if (
-      _govLPTokenVaultFeeRate + _treasuryFeeRate + _controllerFeeRate >= 1e18
-    ) {
-      revert SushiSwapLPVaultMigrator_InvalidFeeRate();
+    if (govLPTokenVaultFeeRate + treasuryFeeRate >= 1e18) {
+      revert CurveLPVaultMigrator_InvalidFeeRate();
     }
 
     treasury = _treasury;
     controller = _controller;
     govLPTokenVault = _govLPTokenVault;
-    treasuryFeeRate = _treasuryFeeRate;
-    controllerFeeRate = _controllerFeeRate;
+
     govLPTokenVaultFeeRate = _govLPTokenVaultFeeRate;
+    controllerFeeRate = _controllerFeeRate;
+    treasuryFeeRate = _treasuryFeeRate;
 
-    sushiSwapRouter = _sushiSwapRouter;
     uniswapRouter = _uniswapRouter;
-
     quoter = _quoter;
   }
 
@@ -89,7 +84,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
   modifier onlyWhitelistedTokenVault(address caller) {
     if (!tokenVaultOK[caller]) {
-      revert SushiSwapLPVaultMigrator_OnlyWhitelistedTokenVault();
+      revert CurveLPVaultMigrator_OnlyWhitelistedTokenVault();
     }
     _;
   }
@@ -102,6 +97,17 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     tokenVaultOK[tokenVault] = isOk;
   }
 
+  function mapTokenVaultRouter(
+    address tokenVault,
+    address curveFinancePoolRouter,
+    uint24 underlyingCount
+  ) external onlyOwner {
+    ICurveFiStableSwap router = ICurveFiStableSwap(curveFinancePoolRouter);
+
+    tokenVaultPoolRouter[tokenVault] = router;
+    poolUnderlyingCount[address(router)] = underlyingCount;
+  }
+
   /* ========== EXTERNAL FUNCTIONS ========== */
   function execute(bytes calldata _data)
     external
@@ -109,51 +115,58 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     nonReentrant
   {
     (address lpToken, uint24 poolFee) = abi.decode(_data, (address, uint24));
-    address baseToken = address(ILp(lpToken).token0()) != address(WETH9)
-      ? address(ILp(lpToken).token0())
-      : address(ILp(lpToken).token1());
+    ICurveFiStableSwap curveStableSwap = tokenVaultPoolRouter[msg.sender];
 
     uint256 liquidity = IERC20(lpToken).balanceOf(address(this));
-    IERC20(lpToken).safeApprove(address(sushiSwapRouter), liquidity);
-    sushiSwapRouter.removeLiquidityETH(
-      baseToken,
-      liquidity,
-      0,
-      0,
-      address(this),
-      block.timestamp
-    );
+    IERC20(lpToken).approve(address(curveStableSwap), liquidity);
 
-    uint256 swapAmount = IERC20(baseToken).balanceOf(address(this));
-    IERC20(baseToken).safeApprove(address(uniswapRouter), swapAmount);
-    IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
-      .ExactInputSingleParams({
-        tokenIn: baseToken,
-        tokenOut: WETH9,
-        fee: poolFee,
-        recipient: address(this),
-        amountIn: swapAmount,
-        amountOutMinimum: 0,
-        sqrtPriceLimitX96: 0
-      });
-    uniswapRouter.exactInputSingle(params);
+    uint24 underlyingCount = poolUnderlyingCount[address(curveStableSwap)];
+
+    if (underlyingCount == 3) {
+      curveStableSwap.remove_liquidity(
+        liquidity,
+        [uint256(0), uint256(0), uint256(0)]
+      );
+    } else {
+      curveStableSwap.remove_liquidity(liquidity, [uint256(0), uint256(0)]);
+    }
+
+    uint256 i;
+    for (i = 0; i < underlyingCount; i++) {
+      address coinAddress = curveStableSwap.coins((i));
+
+      uint256 swapAmount = IERC20(coinAddress).balanceOf(address(this));
+      IERC20(coinAddress).approve(address(uniswapRouter), swapAmount);
+
+      IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
+        .ExactInputSingleParams({
+          tokenIn: coinAddress,
+          tokenOut: WETH9,
+          fee: poolFee,
+          recipient: address(this),
+          amountIn: swapAmount,
+          amountOutMinimum: 0,
+          sqrtPriceLimitX96: 0
+        });
+
+      uniswapRouter.exactInputSingle(params);
+    }
+
     _unwrapWETH(address(this));
+
     uint256 govLPTokenVaultFee = govLPTokenVaultFeeRate.mulWadDown(
       address(this).balance
     );
     uint256 treasuryFee = treasuryFeeRate.mulWadDown(address(this).balance);
-    uint256 controllerFee = controllerFeeRate.mulWadDown(address(this).balance);
     uint256 vaultReward = address(this).balance -
       govLPTokenVaultFee -
-      treasuryFee -
-      controllerFee;
-
+      treasuryFee;
     treasury.safeTransferETH(treasuryFee);
     govLPTokenVault.safeTransferETH(govLPTokenVaultFee);
-    controller.safeTransferETH(controllerFee);
+
     msg.sender.safeTransferETH(vaultReward);
 
-    emit Execute(vaultReward, treasuryFee, controllerFee, govLPTokenVaultFee);
+    emit Execute(vaultReward, govLPTokenVaultFee, treasuryFee);
   }
 
   function _unwrapWETH(address _recipient) private {
@@ -170,31 +183,33 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       _data,
       (address, uint24, uint256)
     );
-    address baseToken = address(ILp(lpToken).token0()) != address(WETH9)
-      ? address(ILp(lpToken).token0())
-      : address(ILp(lpToken).token1());
 
-    (uint112 reserve0, uint112 reserve1, ) = ILp(lpToken).getReserves();
-    (uint112 baseTokenReserve, uint112 ethReserve) = address(
-      ILp(lpToken).token0()
-    ) != address(WETH9)
-      ? (reserve0, reserve1)
-      : (reserve1, reserve0);
+    ICurveFiStableSwap curveStableSwap = tokenVaultPoolRouter[msg.sender];
+    uint24 underlyingCount = poolUnderlyingCount[address(curveStableSwap)];
 
-    uint256 ratio = stakeAmount.divWadDown(ILp(lpToken).totalSupply());
-    uint256 baseTokenLiquidity = uint256(baseTokenReserve).mulWadDown(ratio);
-    uint256 ethLiquidity = uint256(ethReserve).mulWadDown(ratio);
+    uint256 ratio = stakeAmount.divWadDown(IERC20(lpToken).totalSupply());
+    uint256 amountOut = 0;
+    uint256 i;
+    for (i = 0; i < underlyingCount; i++) {
+      address coinAddress = curveStableSwap.coins((i));
 
-    uint256 amountOut = quoter.quoteExactInputSingle(
-      baseToken,
-      WETH9,
-      poolFee,
-      baseTokenLiquidity,
-      0
-    );
+      uint256 reserve = curveStableSwap.balances(i);
+      uint256 liquidity = uint256(reserve).mulWadDown(ratio);
 
-    uint256 totalEth = amountOut.add(ethLiquidity);
-    return totalEth;
+      if (coinAddress == ETH || coinAddress == WETH9) {
+        amountOut += liquidity;
+      } else {
+        amountOut += quoter.quoteExactInputSingle(
+          coinAddress,
+          WETH9,
+          poolFee,
+          liquidity,
+          0
+        );
+      }
+    }
+
+    return amountOut;
   }
 
   function getApproximatedExecutionRewards(bytes calldata _data)

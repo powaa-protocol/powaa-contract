@@ -289,7 +289,7 @@ abstract contract BaseTokenVault is
     }
 
     if (_rewardsDuration < 1 days || _rewardsDuration > 30 days) {
-      // Acceptable duration is between 1 - 10 days
+      // Acceptable duration is between 1 - 30 days
       revert TokenVault_InvalidDuration();
     }
 

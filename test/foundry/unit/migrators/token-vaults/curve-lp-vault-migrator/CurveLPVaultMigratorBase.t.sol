@@ -9,6 +9,7 @@ import "../../../_mock/MockCurveLpToken.sol";
 import "../../../_mock/MockCurveFiStableSwap.sol";
 import "../../../_mock/MockCurveFiStableSwap2.sol";
 import "../../../_mock/MockV3SwapRouter.sol";
+import "../../../_mock/MockQuoter.sol";
 import "../../../_mock/MockETHLpToken.sol";
 import "../../../_mock/MockWETH9.sol";
 import "../../../../../../contracts/v0.8.16/migrators/token-vaults/CurveLPVaultMigrator.sol";
@@ -19,6 +20,7 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
   CurveLPVaultMigrator internal migrator;
 
   address internal constant TREASURY = address(12345);
+  address internal constant CONTROLLER = address(11355);
   address internal constant GOV_LP_TOKEN_VAULT = address(54321);
 
   address internal constant TOKEN_VAULT_STETH = address(77777);
@@ -33,10 +35,12 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
   MockCurveFiStableSwap internal fakeCurve3PoolStableSwap;
   MockCurveFiStableSwap internal fakeCurveTriCrypto2StableSwap;
   MockV3SwapRouter internal fakeUniswapRouter;
+  MockQuoter internal fakeQuoter;
 
   MockERC20 internal mockBaseToken;
   MockETHLpToken internal mockLpToken;
 
+  address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
   address public constant WETH9 =
     address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
@@ -45,9 +49,11 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
   /// @dev Foundry's setUp method
   function setUp() public virtual {
     _setupMockWETH9(100000000 ether);
+    _setupMockNativeETH(100000000 ether);
     fakeUniswapRouter = new MockV3SwapRouter();
+    fakeQuoter = new MockQuoter();
 
-    migrator = _setupMigrator(0.1 ether, 0.1 ether);
+    migrator = _setupMigrator(0.1 ether, 0.5 ether, 0.1 ether);
 
     mockBaseToken = _setupFakeERC20("BASE ERC20 TOKEN", "BT");
     mockLpToken = new MockETHLpToken(IERC20(address(mockBaseToken)));
@@ -62,7 +68,7 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
 
   function _setupFakeCurveStETHPoolLP() internal {
     MockERC20[4] memory stethLPUnderlyings;
-    stethLPUnderlyings[0] = MockERC20(payable(WETH9));
+    stethLPUnderlyings[0] = MockERC20(payable(ETH));
     stethLPUnderlyings[1] = _setupFakeERC20("Lido Staked ETH", "stETH");
 
     uint256[2] memory exchangeRates;
@@ -95,7 +101,7 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
     MockERC20[4] memory threePoolLPUnderlyings;
     threePoolLPUnderlyings[0] = _setupFakeERC20("Fake DAI", "DAI");
     threePoolLPUnderlyings[1] = _setupFakeERC20("Fake USDC", "USDC");
-    threePoolLPUnderlyings[2] = _setupFakeERC20("Fake USDT", "USDT");
+    threePoolLPUnderlyings[2] = MockERC20(payable(WETH9));
 
     uint256[3] memory exchangeRates;
     exchangeRates[0] = 0.3 ether;
@@ -159,15 +165,19 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
   }
 
   function _setupMigrator(
-    uint256 _govLPTokenVaultFeeRate,
-    uint256 _treasuryFeeRate
+    uint256 _treasuryFeeRate,
+    uint256 _controllerFeeRate,
+    uint256 _govLPTokenVaultFeeRate
   ) internal returns (CurveLPVaultMigrator) {
     CurveLPVaultMigrator _migrator = new CurveLPVaultMigrator(
       TREASURY,
+      CONTROLLER,
       GOV_LP_TOKEN_VAULT,
-      _govLPTokenVaultFeeRate,
       _treasuryFeeRate,
-      IV3SwapRouter(address(fakeUniswapRouter))
+      _controllerFeeRate,
+      _govLPTokenVaultFeeRate,
+      IV3SwapRouter(address(fakeUniswapRouter)),
+      IQuoter(address(fakeQuoter))
     );
 
     return _migrator;
@@ -199,6 +209,14 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
 
     // pre-minted token for mocking purposes
     vm.deal(WETH9, initialAmount);
+  }
+
+  function _setupMockNativeETH(uint256 initialAmount) internal {
+    MockERC20 mockERC20Impl = new MockERC20();
+    bytes memory ethCode = address(mockERC20Impl).code;
+
+    vm.etch(ETH, ethCode);
+    MockWETH9(payable(ETH)).initialize("Ethereum", "ETH");
   }
 
   receive() external payable {}

@@ -202,9 +202,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     returns (uint256)
   {
     uint256 totalEth = getAmountOut(_data);
-    uint256 controllerFee = controllerFeeRate.mulWadDown(totalEth);
-
-    return controllerFee;
+    return controllerFeeRate.mulWadDown(totalEth);
   }
 
   /// @dev Fallback function to accept ETH.

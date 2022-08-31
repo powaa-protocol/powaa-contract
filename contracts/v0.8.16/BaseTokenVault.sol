@@ -134,10 +134,6 @@ abstract contract BaseTokenVault is
     return block.timestamp < periodFinish ? block.timestamp : periodFinish;
   }
 
-  function masterContractOwner() external view returns (address) {
-    return getMasterContractOwner();
-  }
-
   function rewardPerToken() public view returns (uint256) {
     if (_totalSupply == 0) {
       return rewardPerTokenStored;
@@ -275,7 +271,7 @@ abstract contract BaseTokenVault is
     if (_tokenAddress == address(stakingToken))
       revert TokenVault_CannotWithdrawStakingToken();
 
-    IERC20(_tokenAddress).safeTransfer(owner(), _tokenAmount);
+    IERC20(_tokenAddress).safeTransfer(getMasterContractOwner(), _tokenAmount);
 
     emit Recovered(_tokenAddress, _tokenAmount);
   }
@@ -289,7 +285,7 @@ abstract contract BaseTokenVault is
     }
 
     if (_rewardsDuration < 1 days || _rewardsDuration > 30 days) {
-      // Acceptable duration is between 1 - 10 days
+      // Acceptable duration is between 1 - 30 days
       revert TokenVault_InvalidDuration();
     }
 

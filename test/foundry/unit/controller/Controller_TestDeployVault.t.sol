@@ -76,7 +76,7 @@ contract Controller_TestDeployVault is ControllerBaseTest {
       address(mockTokenVaultImpl)
     );
     assertEq(
-      MockTokenVault(payable(deterministicAddress)).masterContractOwner(),
+      MockTokenVault(payable(deterministicAddress)).getMasterContractOwner(),
       address(this)
     );
     assertEq(
@@ -121,7 +121,7 @@ contract Controller_TestDeployVault is ControllerBaseTest {
       address(mockTokenVaultImpl)
     );
     assertEq(
-      MockTokenVault(payable(deterministicAddress)).masterContractOwner(),
+      MockTokenVault(payable(deterministicAddress)).getMasterContractOwner(),
       address(this)
     );
     assertEq(
@@ -164,7 +164,7 @@ contract Controller_TestDeployVault is ControllerBaseTest {
       address(mockGovLPVaultImpl)
     );
     assertEq(
-      MockTokenVault(payable(deterministicAddress)).masterContractOwner(),
+      MockTokenVault(payable(deterministicAddress)).getMasterContractOwner(),
       address(this)
     );
     assertEq(
@@ -209,7 +209,7 @@ contract Controller_TestDeployVault is ControllerBaseTest {
       address(mockGovLPVaultImpl)
     );
     assertEq(
-      MockTokenVault(payable(deterministicAddress)).masterContractOwner(),
+      MockTokenVault(payable(deterministicAddress)).getMasterContractOwner(),
       address(this)
     );
     assertEq(

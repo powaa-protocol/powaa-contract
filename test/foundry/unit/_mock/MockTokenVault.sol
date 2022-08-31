@@ -28,7 +28,7 @@ contract MockTokenVault is MockContract, Ownable {
     masterContract = this;
   }
 
-  function masterContractOwner() external view returns (address) {
+  function getMasterContractOwner() external view returns (address) {
     return masterContract.owner();
   }
 

@@ -64,6 +64,10 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
     _setupFakeCurveStETHPoolLP();
     _setupFakeCurve3PoolLP();
     _setupFakeCurveTriCryptoLP();
+
+    vm.deal(address(fakeCurveStethStableSwap), 1000000 ether);
+    vm.deal(address(fakeCurve3PoolStableSwap), 1000000 ether);
+    vm.deal(address(fakeCurveTriCrypto2StableSwap), 1000000 ether);
   }
 
   function _setupFakeCurveStETHPoolLP() internal {

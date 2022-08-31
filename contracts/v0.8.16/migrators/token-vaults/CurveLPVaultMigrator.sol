@@ -45,8 +45,9 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   /* ========== EVENTS ========== */
   event Execute(
     uint256 vaultReward,
-    uint256 govLPTokenVaultReward,
-    uint256 treasuryReward
+    uint256 treasuryReward,
+    uint256 controllerReward,
+    uint256 govLPTokenVaultReward
   );
 
   /* ========== ERRORS ========== */
@@ -135,38 +136,46 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     for (i = 0; i < underlyingCount; i++) {
       address coinAddress = curveStableSwap.coins((i));
 
-      uint256 swapAmount = IERC20(coinAddress).balanceOf(address(this));
-      IERC20(coinAddress).approve(address(uniswapRouter), swapAmount);
+      // ETH is already counted in this address balance
+      // swapping WETH is unnecessary
+      if (coinAddress != ETH && coinAddress != WETH9) {
+        uint256 swapAmount = IERC20(coinAddress).balanceOf(address(this));
+        IERC20(coinAddress).safeApprove(address(uniswapRouter), swapAmount);
 
-      IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
-        .ExactInputSingleParams({
-          tokenIn: coinAddress,
-          tokenOut: WETH9,
-          fee: poolFee,
-          recipient: address(this),
-          amountIn: swapAmount,
-          amountOutMinimum: 0,
-          sqrtPriceLimitX96: 0
-        });
+        IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
+          .ExactInputSingleParams({
+            tokenIn: coinAddress,
+            tokenOut: WETH9,
+            fee: poolFee,
+            recipient: address(this),
+            amountIn: swapAmount,
+            amountOutMinimum: 0,
+            sqrtPriceLimitX96: 0
+          });
 
-      uniswapRouter.exactInputSingle(params);
+        uniswapRouter.exactInputSingle(params);
+      }
     }
 
     _unwrapWETH(address(this));
 
+    uint256 treasuryFee = treasuryFeeRate.mulWadDown(address(this).balance);
+    uint256 controllerFee = controllerFeeRate.mulWadDown(address(this).balance);
     uint256 govLPTokenVaultFee = govLPTokenVaultFeeRate.mulWadDown(
       address(this).balance
     );
-    uint256 treasuryFee = treasuryFeeRate.mulWadDown(address(this).balance);
     uint256 vaultReward = address(this).balance -
       govLPTokenVaultFee -
-      treasuryFee;
+      treasuryFee -
+      controllerFee;
+
     treasury.safeTransferETH(treasuryFee);
+    controller.safeTransferETH(controllerFee);
     govLPTokenVault.safeTransferETH(govLPTokenVaultFee);
 
     msg.sender.safeTransferETH(vaultReward);
 
-    emit Execute(vaultReward, govLPTokenVaultFee, treasuryFee);
+    emit Execute(vaultReward, treasuryFee, controllerFee, govLPTokenVaultFee);
   }
 
   function _unwrapWETH(address _recipient) private {

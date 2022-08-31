@@ -178,6 +178,8 @@ contract TokenVault is BaseTokenVault {
   }
 
   function claimETH() external whenMigrated {
+    // claimGov first to reset the reward
+    claimGov();
     uint256 claimable = _balances[msg.sender].mulDivDown(
       ethSupply,
       _totalSupply

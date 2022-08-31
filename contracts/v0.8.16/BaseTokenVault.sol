@@ -275,7 +275,7 @@ abstract contract BaseTokenVault is
     if (_tokenAddress == address(stakingToken))
       revert TokenVault_CannotWithdrawStakingToken();
 
-    IERC20(_tokenAddress).safeTransfer(owner(), _tokenAmount);
+    IERC20(_tokenAddress).safeTransfer(getMasterContractOwner(), _tokenAmount);
 
     emit Recovered(_tokenAddress, _tokenAmount);
   }

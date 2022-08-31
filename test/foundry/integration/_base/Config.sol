@@ -25,6 +25,14 @@ contract Config {
   address public constant USDT_ETH_SUSHI_LP_ADDRESS =
     0x06da0fd433C1A5d7a4faa01111c044910A184553;
 
+  // Curve's LP
+  address public constant CURVE_STETH_LP_ADDRESS =
+    0x06325440D014e39736583c165C2963BA99fAf14E;
+  address public constant CURVE_3POOL_LP_ADDRESS =
+    0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
+  address public constant CURVE_TRICRYPTO2_LP_ADDRESS =
+    0xc4AD29ba4B3c580e6D59105FFf484999997675Ff;
+
   // Uniswap's
   address public constant UNISWAP_V2_FACTORY =
     0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
@@ -36,6 +44,22 @@ contract Config {
     0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
   address public constant UNISWAP_V3_QUOTER =
     0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6;
+
+  // Curve's StableSwap
+  address public constant CURVE_STETH_STABLE_SWAP_ADDRESS =
+    0xDC24316b9AE028F1497c275EB9192a3Ea0f67022;
+  address public constant CURVE_3POOL_STABLE_SWAP_ADDRESS =
+    0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
+  address public constant CURVE_TRICRYPTO2_STABLE_SWAP_ADDRESS =
+    0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
+
+  // Random Curve's LP Token owner to steal from
+  address public constant CURVE_STETH_LP_OWNER =
+    0x99ac10631F69C753DDb595D074422a0922D9056B;
+  address public constant CURVE_3POOL_LP_OWNER =
+    0xEcd5e75AFb02eFa118AF914515D6521aaBd189F1;
+  address public constant CURVE_TRICRYPTO2_LP_OWNER =
+    0xDeFd8FdD20e0f34115C7018CCfb655796F6B2168;
 
   // Random USDC Whale Address
   address public constant USDC_PHILANTHROPIST =

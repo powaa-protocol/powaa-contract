@@ -40,6 +40,7 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
   MockERC20 internal mockBaseToken;
   MockETHLpToken internal mockLpToken;
 
+  address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
   address public constant WETH9 =
     address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
@@ -48,10 +49,11 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
   /// @dev Foundry's setUp method
   function setUp() public virtual {
     _setupMockWETH9(100000000 ether);
+    _setupMockNativeETH(100000000 ether);
     fakeUniswapRouter = new MockV3SwapRouter();
     fakeQuoter = new MockQuoter();
 
-    migrator = _setupMigrator(0.1 ether, 0.1 ether, 0.1 ether);
+    migrator = _setupMigrator(0.1 ether, 0.5 ether, 0.1 ether);
 
     mockBaseToken = _setupFakeERC20("BASE ERC20 TOKEN", "BT");
     mockLpToken = new MockETHLpToken(IERC20(address(mockBaseToken)));
@@ -66,7 +68,7 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
 
   function _setupFakeCurveStETHPoolLP() internal {
     MockERC20[4] memory stethLPUnderlyings;
-    stethLPUnderlyings[0] = MockERC20(payable(WETH9));
+    stethLPUnderlyings[0] = MockERC20(payable(ETH));
     stethLPUnderlyings[1] = _setupFakeERC20("Lido Staked ETH", "stETH");
 
     uint256[2] memory exchangeRates;
@@ -99,7 +101,7 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
     MockERC20[4] memory threePoolLPUnderlyings;
     threePoolLPUnderlyings[0] = _setupFakeERC20("Fake DAI", "DAI");
     threePoolLPUnderlyings[1] = _setupFakeERC20("Fake USDC", "USDC");
-    threePoolLPUnderlyings[2] = _setupFakeERC20("Fake USDT", "USDT");
+    threePoolLPUnderlyings[2] = MockERC20(payable(WETH9));
 
     uint256[3] memory exchangeRates;
     exchangeRates[0] = 0.3 ether;
@@ -207,6 +209,14 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
 
     // pre-minted token for mocking purposes
     vm.deal(WETH9, initialAmount);
+  }
+
+  function _setupMockNativeETH(uint256 initialAmount) internal {
+    MockERC20 mockERC20Impl = new MockERC20();
+    bytes memory ethCode = address(mockERC20Impl).code;
+
+    vm.etch(ETH, ethCode);
+    MockWETH9(payable(ETH)).initialize("Ethereum", "ETH");
   }
 
   receive() external payable {}

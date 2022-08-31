@@ -42,4 +42,9 @@ contract MockCurveFiStableSwap is MockContract {
     MockERC20 token = pool.tokens(i);
     return address(token);
   }
+
+  function balances(uint256 i) external view returns (uint256) {
+    MockERC20 token = pool.tokens(i);
+    return token.balanceOf(address(this));
+  }
 }

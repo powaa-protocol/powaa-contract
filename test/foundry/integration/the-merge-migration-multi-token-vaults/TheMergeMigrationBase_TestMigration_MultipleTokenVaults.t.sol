@@ -125,8 +125,9 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     vm.expectEmit(true, true, true, true);
     emit Staked(CAT, 100 ether);
 
+    // given block timstamp now is 1659940505, after staking, last reward time will be 1659940505
+    // total supply will be 100 ether
     govLPVault.stake(100 ether);
-
     assertEq(govLPVault.balanceOf(CAT), 100 ether);
     vm.stopPrank();
 
@@ -134,10 +135,11 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // EVE's current LP balance = 101000e18 * 100e18 / 101000e18 = 100 LP
     vm.startPrank(EVE);
     powaaETHUniswapV2LP.approve(address(govLPVault), 50 ether);
-
     vm.expectEmit(true, true, true, true);
     emit Staked(EVE, 50 ether);
 
+    // given block timstamp now is 1659940505, after staking, last reward time will be 1659940505
+    // total supply will be 150 ether
     govLPVault.stake(50 ether);
 
     assertEq(govLPVault.balanceOf(EVE), 50 ether);
@@ -334,6 +336,10 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // Cat claims her ETH, since Cat owns 66.666% of the supply,
     // Cat would receive 100 * 150.242806441201028005 / 150 =~ 100.161870960800685336 ETH
     // Cat would receive 100 * 150 / 150 =~ 100 POWAA
+    // After a certain amount of time (7 days ~=  604800 sec)
+    // 604800 * 10 POWWA = 6048000 total POWWA to be distributed
+    // 6048000 POWAA / 150 LP = 40320 POWAA per 1 LP
+    // Cat own 100 LP hence, 40320 * 100 = 4032000 POWAA + 100 POWAA from LP removal = 4032100 POWAA
     vm.startPrank(CAT);
     // CAT doesn't have 0 ether, need to reset her for good
     vm.deal(CAT, 0);
@@ -344,7 +350,7 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
 
     assertEq(govLPVault.balanceOf(CAT), 0);
     assertEq(CAT.balance, 100.161870960800685336 ether);
-    assertEq(POWAAToken.balanceOf(CAT), 100 ether);
+    assertEq(POWAAToken.balanceOf(CAT), 4032100 ether);
 
     // Cat try to withdraw, shouldn't be able to do so
     vm.expectRevert(abi.encodeWithSignature("TokenVault_AlreadyMigrated()"));
@@ -353,7 +359,7 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // Cat try to claims her ETH again, shouldn't be able to do so
     govLPVault.claimETHPOWAA();
     assertEq(CAT.balance, 100.161870960800685336 ether);
-    assertEq(POWAAToken.balanceOf(CAT), 100 ether);
+    assertEq(POWAAToken.balanceOf(CAT), 4032100 ether);
     vm.stopPrank();
 
     // Eve claims her ETH, since Eve owns 33.333% of the supply,
@@ -365,16 +371,20 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     vm.expectEmit(true, true, true, true);
     emit ClaimETHPOWAA(EVE, 50.080935480400342668 ether, 50 ether);
 
+    // After a certain amount of time (7 days ~=  604800 sec)
+    // 604800 * 10 POWWA = 6048000 total POWWA to be distributed
+    // 6048000 POWAA / 150 LP = 40320 POWAA per 1 LP
+    // Eve own 50 LP hence, 40320 * 50 = 2016000 POWAA + 50 POWAA from LP removal = 2016050 POWAA
     govLPVault.claimETHPOWAA();
 
     assertEq(govLPVault.balanceOf(EVE), 0);
     assertEq(EVE.balance, 50.080935480400342668 ether);
-    assertEq(POWAAToken.balanceOf(EVE), 50 ether);
+    assertEq(POWAAToken.balanceOf(EVE), 2016050 ether);
 
     // Cat try to claims her ETH again, shouldn't be able to do so
     govLPVault.claimETHPOWAA();
     assertEq(EVE.balance, 50.080935480400342668 ether);
-    assertEq(POWAAToken.balanceOf(EVE), 50 ether);
+    assertEq(POWAAToken.balanceOf(EVE), 2016050 ether);
     vm.stopPrank();
   }
 
@@ -565,6 +575,10 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // Cat claims her ETH, since Cat owns 66.666% of the supply,
     // Cat would receive 100 * 150 / 150 =~ 100 ETH
     // Cat would receive 100 * 150 / 150 =~ 100 POWAA
+    // After a certain amount of time (7 days ~=  604800 sec)
+    // 604800 * 10 POWWA = 6048000 total POWWA to be distributed
+    // 6048000 POWAA / 150 LP = 40320 POWAA per 1 LP
+    // Cat own 100 LP hence, 40320 * 100 = 4032000 POWAA + 100 POWAA from LP removal = 4032100 POWAA
     vm.startPrank(CAT);
     // CAT doesn't have 0 ether, need to reset her for good
     vm.deal(CAT, 0);
@@ -575,7 +589,7 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
 
     assertEq(govLPVault.balanceOf(CAT), 0);
     assertEq(CAT.balance, 100 ether);
-    assertEq(POWAAToken.balanceOf(CAT), 100 ether);
+    assertEq(POWAAToken.balanceOf(CAT), 4032100 ether);
 
     // Cat try to withdraw, shouldn't be able to do so
     vm.expectRevert(abi.encodeWithSignature("TokenVault_AlreadyMigrated()"));
@@ -584,7 +598,7 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // Cat try to claims her ETH again, shouldn't be able to do so
     govLPVault.claimETHPOWAA();
     assertEq(CAT.balance, 100 ether);
-    assertEq(POWAAToken.balanceOf(CAT), 100 ether);
+    assertEq(POWAAToken.balanceOf(CAT), 4032100 ether);
     vm.stopPrank();
 
     // Eve claims her ETH, since Eve owns 33.333% of the supply,
@@ -596,16 +610,20 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     vm.expectEmit(true, true, true, true);
     emit ClaimETHPOWAA(EVE, 50 ether, 50 ether);
 
+    // After a certain amount of time (7 days ~=  604800 sec)
+    // 604800 * 10 POWWA = 6048000 total POWWA to be distributed
+    // 6048000 POWAA / 150 LP = 40320 POWAA per 1 LP
+    // Eve own 50 LP hence, 40320 * 50 = 2016000 POWAA + 50 POWAA from LP removal = 2016050 POWAA
     govLPVault.claimETHPOWAA();
 
     assertEq(govLPVault.balanceOf(EVE), 0);
     assertEq(EVE.balance, 50 ether);
-    assertEq(POWAAToken.balanceOf(EVE), 50 ether);
+    assertEq(POWAAToken.balanceOf(EVE), 2016050 ether);
 
     // Cat try to claims her ETH again, shouldn't be able to do so
     govLPVault.claimETHPOWAA();
     assertEq(EVE.balance, 50 ether);
-    assertEq(POWAAToken.balanceOf(EVE), 50 ether);
+    assertEq(POWAAToken.balanceOf(EVE), 2016050 ether);
     vm.stopPrank();
   }
 

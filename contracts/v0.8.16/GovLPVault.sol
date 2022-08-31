@@ -97,6 +97,8 @@ contract GovLPVault is BaseTokenVault {
   }
 
   function claimETHPOWAA() external whenMigrated {
+    // claimGov first to reset the reward
+    claimGov();
     uint256 claimableETH = _balances[msg.sender].mulDivDown(
       ethSupply,
       _totalSupply

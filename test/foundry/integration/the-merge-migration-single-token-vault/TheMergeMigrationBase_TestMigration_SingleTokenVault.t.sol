@@ -41,6 +41,7 @@ contract TheMergeMigrationBase_TestMigration_SingleTokenVault is
     uint256 claimableETH,
     uint256 claimablePOWAA
   );
+  event RewardPaid(address indexed user, uint256 reward);
 
   /// @dev Foundry's setUp method
   function setUp() public override {
@@ -252,6 +253,8 @@ contract TheMergeMigrationBase_TestMigration_SingleTokenVault is
     // CAT doesn't have 0 ether, need to reset her for good
     vm.deal(CAT, 0);
     vm.expectEmit(true, true, true, true);
+    emit RewardPaid(CAT, 4032000 ether);
+    vm.expectEmit(true, true, true, true);
     emit ClaimETHPOWAA(CAT, 100.028738678601097060 ether, 100 ether);
 
     // After a certain amount of time (7 days ~=  604800 sec)
@@ -280,6 +283,8 @@ contract TheMergeMigrationBase_TestMigration_SingleTokenVault is
     vm.startPrank(EVE);
     // EVE doesn't have 0 ether, need to reset her for good
     vm.deal(EVE, 0);
+    vm.expectEmit(true, true, true, true);
+    emit RewardPaid(EVE, 2016000 ether);
     vm.expectEmit(true, true, true, true);
     emit ClaimETHPOWAA(EVE, 50.014369339300548530 ether, 50 ether);
 
@@ -455,6 +460,8 @@ contract TheMergeMigrationBase_TestMigration_SingleTokenVault is
     // CAT doesn't have 0 ether, need to reset her for good
     vm.deal(CAT, 0);
     vm.expectEmit(true, true, true, true);
+    emit RewardPaid(CAT, 4032000 ether);
+    vm.expectEmit(true, true, true, true);
     emit ClaimETHPOWAA(CAT, 100 ether, 100 ether);
 
     // After a certain amount of time (7 days ~=  604800 sec)
@@ -483,6 +490,8 @@ contract TheMergeMigrationBase_TestMigration_SingleTokenVault is
     vm.startPrank(EVE);
     // EVE doesn't have 0 ether, need to reset her for good
     vm.deal(EVE, 0);
+    vm.expectEmit(true, true, true, true);
+    emit RewardPaid(EVE, 2016000 ether);
     vm.expectEmit(true, true, true, true);
     emit ClaimETHPOWAA(EVE, 50 ether, 50 ether);
 

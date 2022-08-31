@@ -42,6 +42,7 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     uint256 claimableETH,
     uint256 claimablePOWAA
   );
+  event RewardPaid(address indexed user, uint256 reward);
 
   /// @dev Foundry's setUp method
   function setUp() public override {
@@ -344,6 +345,8 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // CAT doesn't have 0 ether, need to reset her for good
     vm.deal(CAT, 0);
     vm.expectEmit(true, true, true, true);
+    emit RewardPaid(CAT, 4032000 ether);
+    vm.expectEmit(true, true, true, true);
     emit ClaimETHPOWAA(CAT, 100.161870960800685336 ether, 100 ether);
 
     govLPVault.claimETHPOWAA();
@@ -368,6 +371,8 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     vm.startPrank(EVE);
     // EVE doesn't have 0 ether, need to reset her for good
     vm.deal(EVE, 0);
+    vm.expectEmit(true, true, true, true);
+    emit RewardPaid(EVE, 2016000 ether);
     vm.expectEmit(true, true, true, true);
     emit ClaimETHPOWAA(EVE, 50.080935480400342668 ether, 50 ether);
 
@@ -583,6 +588,8 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // CAT doesn't have 0 ether, need to reset her for good
     vm.deal(CAT, 0);
     vm.expectEmit(true, true, true, true);
+    emit RewardPaid(CAT, 4032000 ether);
+    vm.expectEmit(true, true, true, true);
     emit ClaimETHPOWAA(CAT, 100 ether, 100 ether);
 
     govLPVault.claimETHPOWAA();
@@ -607,6 +614,8 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     vm.startPrank(EVE);
     // EVE doesn't have 0 ether, need to reset her for good
     vm.deal(EVE, 0);
+    vm.expectEmit(true, true, true, true);
+    emit RewardPaid(EVE, 2016000 ether);
     vm.expectEmit(true, true, true, true);
     emit ClaimETHPOWAA(EVE, 50 ether, 50 ether);
 

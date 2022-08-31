@@ -134,10 +134,6 @@ abstract contract BaseTokenVault is
     return block.timestamp < periodFinish ? block.timestamp : periodFinish;
   }
 
-  function masterContractOwner() external view returns (address) {
-    return getMasterContractOwner();
-  }
-
   function rewardPerToken() public view returns (uint256) {
     if (_totalSupply == 0) {
       return rewardPerTokenStored;

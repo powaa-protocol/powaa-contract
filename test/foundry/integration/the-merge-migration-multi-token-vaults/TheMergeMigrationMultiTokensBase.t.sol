@@ -138,7 +138,7 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
     assertEq(govLPVault.getMasterContractOwner(), address(this));
     // Storage of a cloned instance should be correctly updated
     assertEq(address(govLPVault.masterContract()), address(govLPVaultImpl));
-    assertEq(govLPVault.masterContractOwner(), address(this));
+    assertEq(govLPVault.owner(), address(0));
     assertEq(govLPVault.rewardsDistribution(), address(this));
     assertEq(govLPVault.rewardsToken(), address(POWAAToken));
     assertEq(address(govLPVault.stakingToken()), address(powaaETHUniswapV2LP));
@@ -242,7 +242,7 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
 
     assertEq(vault.getMasterContractOwner(), address(this));
     assertEq(address(vault.masterContract()), _impl);
-    assertEq(vault.masterContractOwner(), address(this));
+    assertEq(vault.owner(), address(0));
     assertEq(vault.rewardsDistribution(), address(this));
     assertEq(vault.rewardsToken(), address(POWAAToken));
     assertEq(address(vault.stakingToken()), address(_stakingToken));

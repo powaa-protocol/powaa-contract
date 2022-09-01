@@ -12,6 +12,8 @@ contract MockCurveFiStableSwap is MockContract {
   using SafeTransferLib for address;
   using SafeMath for uint256;
 
+  address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
   MockCurveLpToken public pool;
   uint256[] exchangeRates;
 
@@ -34,7 +36,11 @@ contract MockCurveFiStableSwap is MockContract {
       }
 
       uint256 swappedAmount = _amount.mul(exchangeRates[i]).div(1 ether);
-      token.transfer(msg.sender, swappedAmount);
+      if (address(token) == ETH) {
+        msg.sender.safeTransferETH(swappedAmount);
+      } else {
+        token.transfer(msg.sender, swappedAmount);
+      }
     }
   }
 

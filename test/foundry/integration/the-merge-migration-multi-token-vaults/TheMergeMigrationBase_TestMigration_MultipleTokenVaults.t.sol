@@ -615,6 +615,46 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     assertEq(usdtEthSushiLpVault.balanceOf(BOB), bobLPBalance);
     vm.stopPrank();
 
+    // ALICE & BOB ALSO STAKE IN CURVES POOL
+    vm.startPrank(ALICE);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(ALICE, 25 ether);
+    CURVE_3POOL_LP.approve(address(curve3PoolLpVault), 25 ether);
+    curve3PoolLpVault.stake(25 ether);
+
+    assertEq(curve3PoolLpVault.balanceOf(ALICE), 25 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(ALICE, 75 ether);
+    CURVE_TRICRYPTO2_LP.approve(address(curveTriCrypto2LpVault), 75 ether);
+    curveTriCrypto2LpVault.stake(75 ether);
+
+    assertEq(curveTriCrypto2LpVault.balanceOf(ALICE), 75 ether);
+
+    vm.stopPrank();
+
+    vm.startPrank(BOB);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(BOB, 75 ether);
+    CURVE_3POOL_LP.approve(address(curve3PoolLpVault), 75 ether);
+    curve3PoolLpVault.stake(75 ether);
+
+    assertEq(curve3PoolLpVault.balanceOf(BOB), 75 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(BOB, 25 ether);
+    CURVE_TRICRYPTO2_LP.approve(address(curveTriCrypto2LpVault), 25 ether);
+    curveTriCrypto2LpVault.stake(25 ether);
+
+    assertEq(curveTriCrypto2LpVault.balanceOf(BOB), 25 ether);
+
+    vm.stopPrank();
+
+    assertEq(100 ether, curve3PoolLpVault.totalSupply());
+    assertEq(100 ether, curveTriCrypto2LpVault.totalSupply());
+
     // Cat Stakes ALL POWAA-ETH Univswap V2 LP Token to the contract
     // Cat's current LP balance = 100000e18 * 100e18 / 100000e18 = 100 LP
     vm.startPrank(CAT);
@@ -730,6 +770,52 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     emit Withdrawn(ALICE, aliceLPBalance, 0);
     usdtEthSushiLpVault.withdraw(aliceLPBalance);
     assertEq(usdtEthSushiLpVault.balanceOf(ALICE), 0);
+    vm.stopPrank();
+
+    // Neither Alice nor BOB could claim ETH since it's ETH POS, no migration happens here
+    vm.prank(ALICE);
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_NotYetMigrated()"));
+    curve3PoolLpVault.claimETH();
+    vm.prank(BOB);
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_NotYetMigrated()"));
+    curve3PoolLpVault.claimETH();
+    vm.prank(ALICE);
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_NotYetMigrated()"));
+    curveTriCrypto2LpVault.claimETH();
+    vm.prank(BOB);
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_NotYetMigrated()"));
+    curveTriCrypto2LpVault.claimETH();
+
+    // Still, they will be able to withdraw all their staked tokens
+
+    // Alice try to withdraw, she should be able to withdraw all staking tokens
+    vm.startPrank(ALICE);
+    assertEq(curve3PoolLpVault.balanceOf(ALICE), 25 ether);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(ALICE, 25 ether, 0);
+    curve3PoolLpVault.withdraw(25 ether);
+    assertEq(curve3PoolLpVault.balanceOf(ALICE), 0);
+
+    assertEq(curveTriCrypto2LpVault.balanceOf(ALICE), 75 ether);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(ALICE, 75 ether, 0);
+    curveTriCrypto2LpVault.withdraw(75 ether);
+    assertEq(curveTriCrypto2LpVault.balanceOf(ALICE), 0);
+    vm.stopPrank();
+
+    // BOB try to withdraw, he should be able to withdraw all staking tokens
+    vm.startPrank(BOB);
+    assertEq(curve3PoolLpVault.balanceOf(BOB), 75 ether);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(BOB, 75 ether, 0);
+    curve3PoolLpVault.withdraw(75 ether);
+    assertEq(curve3PoolLpVault.balanceOf(BOB), 0);
+
+    assertEq(curveTriCrypto2LpVault.balanceOf(BOB), 25 ether);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(BOB, 25 ether, 0);
+    curveTriCrypto2LpVault.withdraw(25 ether);
+    assertEq(curveTriCrypto2LpVault.balanceOf(BOB), 0);
     vm.stopPrank();
 
     // if chainID equals to 1, owner can call migrate to split the LP to prevent some loss.

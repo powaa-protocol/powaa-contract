@@ -15,6 +15,7 @@ import "../../../../contracts/v0.8.16/fee-model/LinearFeeModel.sol";
 import "../../../../contracts/v0.8.16/migrators/gov-lp-vaults/UniswapV2GovLPVaultMigrator.sol";
 import "../../../../contracts/v0.8.16/migrators/token-vaults/UniswapV3TokenVaultMigrator.sol";
 import "../../../../contracts/v0.8.16/migrators/token-vaults/SushiSwapLPVaultMigrator.sol";
+import "../../../../contracts/v0.8.16/migrators/token-vaults/CurveLPVaultMigrator.sol";
 import "../_base/BaseTest.sol";
 
 /// @title An abstraction of the The merge migration scenario Testing contract, containing a scaffolding method for creating the fixture
@@ -29,6 +30,7 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
   uint256 public constant THE_MERGE_BLOCK = 15500000; // Assume that the merge block takes place in this block number
   uint24 public constant USDC_ETH_V3_FEE = 3000;
   uint24 public constant USDT_ETH_V3_FEE = 3000;
+  uint24 public constant STETH_FEE = 10000;
 
   // UniswapV3TokenVaultMigrator Params
   uint256 public constant TREASURY_FEE_RATE = 0.05 ether; // 5%
@@ -52,12 +54,18 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
   IUniswapV2Router02 public sushiswapRouter;
   IQuoter public uniswapQuoter;
 
+  ICurveFiStableSwap public curveStEthStableSwap;
+  ICurveFiStableSwap public curve3PoolStableSwap;
+  ICurveFiStableSwap public curveTriCrypto2StableSwap;
+
   IMigrator public govLPVaultMigrator;
   IMigrator public govLPVaultReserveMigrator;
   IMigrator public tokenVaultMigrator;
   IMigrator public tokenVaultReserveMigrator;
   IMigrator public sushiLPTokenVaultMigrator;
   IMigrator public sushiLPTokenVaultReserveMigrator;
+  IMigrator public curveLPVaultMigrator;
+  IMigrator public curveLPVaultReserveMigrator;
 
   /* ========== Fee Model ========== */
   IFeeModel public linearFeeModel;
@@ -69,6 +77,9 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
   TokenVault public usdcTokenVault;
   TokenVault public usdcEthSushiLpVault;
   TokenVault public usdtEthSushiLpVault;
+  TokenVault public curveStEthLpVault;
+  TokenVault public curve3PoolLpVault;
+  TokenVault public curveTriCrypto2LpVault;
   GovLPVault public govLPVault;
 
   /* ========== POWAA-ETH Uniswap V2 token ========== */
@@ -93,6 +104,12 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
     sushiswapRouter = IUniswapV2Router02(SUSHI_SWAP_ROUTER);
 
     uniswapQuoter = IQuoter(UNISWAP_V3_QUOTER);
+
+    curveStEthStableSwap = ICurveFiStableSwap(CURVE_STETH_STABLE_SWAP_ADDRESS);
+    curve3PoolStableSwap = ICurveFiStableSwap(CURVE_3POOL_STABLE_SWAP_ADDRESS);
+    curveTriCrypto2StableSwap = ICurveFiStableSwap(
+      CURVE_TRICRYPTO2_STABLE_SWAP_ADDRESS
+    );
 
     // Setup FeeModel
     linearFeeModel = _setupLinearFeeModel(BASE_RATE, MULTIPLIER_RATE);
@@ -205,6 +222,25 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
       0
     );
 
+    curveLPVaultMigrator = _setupCurveLPVaultMigrator(
+      uniswapV3Router02,
+      uniswapQuoter,
+      address(govLPVault),
+      GOV_LP_VAULT_FEE_RATE,
+      TREASURY_FEE_RATE,
+      address(controller),
+      CONTROLLER_FEE_RATE
+    );
+    curveLPVaultReserveMigrator = _setupCurveLPVaultMigrator(
+      uniswapV3Router02,
+      uniswapQuoter,
+      address(govLPVault),
+      0,
+      0,
+      address(controller),
+      0
+    );
+
     usdcEthSushiLpVault = _setupTokenVault(
       address(USDC_ETH_SUSHI_LP),
       address(tokenVaultImpl),
@@ -220,6 +256,55 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
       sushiLPTokenVaultReserveMigrator,
       USDT_ETH_V3_FEE
     );
+
+    curve3PoolLpVault = _setupTokenVault(
+      address(CURVE_3POOL_LP),
+      address(tokenVaultImpl),
+      curveLPVaultMigrator,
+      curveLPVaultReserveMigrator,
+      USDT_ETH_V3_FEE
+    );
+
+    curveTriCrypto2LpVault = _setupTokenVault(
+      address(CURVE_TRICRYPTO2_LP),
+      address(tokenVaultImpl),
+      curveLPVaultMigrator,
+      curveLPVaultReserveMigrator,
+      USDT_ETH_V3_FEE
+    );
+
+    /*
+    Curve Migrator requires extra step to map TokenVault with Curve's StableSwap (AKA Router)
+    as a distinct StableSwap is deployed for each Curve's LP Pool, unlike Uniswap Router 
+    */
+
+    // 3Pool
+    CurveLPVaultMigrator(payable(address(curveLPVaultMigrator)))
+      .mapTokenVaultRouter(
+        address(curve3PoolLpVault),
+        address(curve3PoolStableSwap),
+        3
+      );
+    CurveLPVaultMigrator(payable(address(curveLPVaultReserveMigrator)))
+      .mapTokenVaultRouter(
+        address(curve3PoolLpVault),
+        address(curve3PoolStableSwap),
+        3
+      );
+
+    // TriCrypto
+    CurveLPVaultMigrator(payable(address(curveLPVaultMigrator)))
+      .mapTokenVaultRouter(
+        address(curveTriCrypto2LpVault),
+        address(curveTriCrypto2StableSwap),
+        3
+      );
+    CurveLPVaultMigrator(payable(address(curveLPVaultReserveMigrator)))
+      .mapTokenVaultRouter(
+        address(curveTriCrypto2LpVault),
+        address(curveTriCrypto2StableSwap),
+        3
+      );
   }
 
   function _setupTokenVault(
@@ -341,25 +426,23 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
       );
   }
 
-  function _setupSushiswapLPTokenVaultMigrator(
+  function _setupCurveLPVaultMigrator(
     IV3SwapRouter _uniV3Router,
-    IUniswapV2Router02 _sushiRouter,
     IQuoter _qouter,
     address _govLPVault,
     uint256 _govLPVaultFeeRate,
     uint256 _treasuryFeeRate,
     address _controller,
     uint256 _controllerFeeRate
-  ) internal returns (SushiSwapLPVaultMigrator) {
+  ) internal returns (CurveLPVaultMigrator) {
     return
-      new SushiSwapLPVaultMigrator(
+      new CurveLPVaultMigrator(
         TREASURY,
         _controller,
         _govLPVault,
         _treasuryFeeRate,
         _controllerFeeRate,
         _govLPVaultFeeRate,
-        _sushiRouter,
         _uniV3Router,
         _qouter
       );
@@ -427,6 +510,18 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
       );
     }
     return (amountToken, amountETH);
+  }
+
+  function _distributeCurveLPToken(
+    address[] memory _recipients,
+    address _donor,
+    address _token,
+    uint256 _amount
+  ) internal {
+    for (uint256 i = 0; i < _recipients.length; i++) {
+      vm.prank(_donor);
+      IERC20(_token).safeTransfer(address(_recipients[i]), _amount);
+    }
   }
 
   function _setupTokenVaultImpl() internal returns (TokenVault) {

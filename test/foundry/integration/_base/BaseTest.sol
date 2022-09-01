@@ -50,6 +50,9 @@ abstract contract BaseTest is Test, Config {
   ERC20 public WETH9;
   ERC20 public USDC_ETH_SUSHI_LP;
   ERC20 public USDT_ETH_SUSHI_LP;
+  ERC20 public CURVE_STETH_LP;
+  ERC20 public CURVE_3POOL_LP;
+  ERC20 public CURVE_TRICRYPTO2_LP;
 
   constructor() {
     proxyAdmin = _setupProxyAdmin();
@@ -68,6 +71,10 @@ abstract contract BaseTest is Test, Config {
     WETH9 = ERC20(WETH9_ADDRESS);
     USDC_ETH_SUSHI_LP = ERC20(USDC_ETH_SUSHI_LP_ADDRESS);
     USDT_ETH_SUSHI_LP = ERC20(USDT_ETH_SUSHI_LP_ADDRESS);
+
+    CURVE_STETH_LP = ERC20(CURVE_STETH_LP_ADDRESS);
+    CURVE_3POOL_LP = ERC20(CURVE_3POOL_LP_ADDRESS);
+    CURVE_TRICRYPTO2_LP = ERC20(CURVE_TRICRYPTO2_LP_ADDRESS);
 
     // deploy: POWAA
     POWAAToken = _setupPOWAAToken(POWAA_TOTAL_SUPPLY);

@@ -67,8 +67,9 @@ contract CurveLPVaultMigrator_TestExecute is CurveLPVaultMigratorBaseTest {
     migrator.execute(abi.encode(address(fakeStethLpToken), uint24(0)));
 
     assertEq(0, MockERC20(fakeStethLpToken).balanceOf(address(migrator)));
-    assertEq(8 ether, address(TOKEN_VAULT_STETH).balance);
+    assertEq(3 ether, address(TOKEN_VAULT_STETH).balance);
     assertEq(1 ether, address(GOV_LP_TOKEN_VAULT).balance);
+    assertEq(5 ether, address(CONTROLLER).balance);
     assertEq(1 ether, address(TREASURY).balance);
   }
 
@@ -93,8 +94,9 @@ contract CurveLPVaultMigrator_TestExecute is CurveLPVaultMigratorBaseTest {
     migrator.execute(abi.encode(address(fake3PoolLpToken), uint24(0)));
 
     assertEq(0, MockERC20(fake3PoolLpToken).balanceOf(address(migrator)));
-    assertEq(8 ether, address(TOKEN_VAULT_3POOL).balance);
+    assertEq(3 ether, address(TOKEN_VAULT_3POOL).balance);
     assertEq(1 ether, address(GOV_LP_TOKEN_VAULT).balance);
+    assertEq(5 ether, address(CONTROLLER).balance);
     assertEq(1 ether, address(TREASURY).balance);
   }
 
@@ -119,8 +121,9 @@ contract CurveLPVaultMigrator_TestExecute is CurveLPVaultMigratorBaseTest {
     migrator.execute(abi.encode(address(fakeTriCrypto2LpToken), uint24(0)));
 
     assertEq(0, MockERC20(fakeTriCrypto2LpToken).balanceOf(address(migrator)));
-    assertEq(8 ether, address(TOKEN_VAULT_TRICRYPTO2).balance);
+    assertEq(3 ether, address(TOKEN_VAULT_TRICRYPTO2).balance);
     assertEq(1 ether, address(GOV_LP_TOKEN_VAULT).balance);
+    assertEq(5 ether, address(CONTROLLER).balance);
     assertEq(1 ether, address(TREASURY).balance);
   }
 
@@ -183,10 +186,11 @@ contract CurveLPVaultMigrator_TestExecute is CurveLPVaultMigratorBaseTest {
     assertEq(0, MockERC20(fakeStethLpToken).balanceOf(address(migrator)));
     assertEq(0, MockERC20(fake3PoolLpToken).balanceOf(address(migrator)));
     assertEq(0, MockERC20(fakeTriCrypto2LpToken).balanceOf(address(migrator)));
-    assertEq(8 ether, address(TOKEN_VAULT_STETH).balance);
-    assertEq(8 ether, address(TOKEN_VAULT_3POOL).balance);
-    assertEq(8 ether, address(TOKEN_VAULT_TRICRYPTO2).balance);
+    assertEq(3 ether, address(TOKEN_VAULT_STETH).balance);
+    assertEq(3 ether, address(TOKEN_VAULT_3POOL).balance);
+    assertEq(3 ether, address(TOKEN_VAULT_TRICRYPTO2).balance);
     assertEq(3 ether, address(GOV_LP_TOKEN_VAULT).balance);
     assertEq(3 ether, address(TREASURY).balance);
+    assertEq(15 ether, address(CONTROLLER).balance);
   }
 }

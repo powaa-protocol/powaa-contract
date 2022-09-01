@@ -60,6 +60,19 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
       1 ether
     );
 
+    _distributeCurveLPToken(
+      TOKEN_VAULT_MIGRATION_PARTICIPANTS,
+      CURVE_3POOL_LP_OWNER,
+      CURVE_3POOL_LP_ADDRESS,
+      uint256(1000 ether)
+    );
+    _distributeCurveLPToken(
+      TOKEN_VAULT_MIGRATION_PARTICIPANTS,
+      CURVE_TRICRYPTO2_LP_OWNER,
+      CURVE_TRICRYPTO2_LP_ADDRESS,
+      uint256(1000 ether)
+    );
+
     // build up LP tokens for each GOV_LP_VAULT_MIGRATION_PARTICIPANTS
     _setupGovLPToken(GOV_LP_VAULT_MIGRATION_PARTICIPANTS, 100 ether, 100 ether);
   }
@@ -117,6 +130,46 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
 
     assertEq(usdtEthSushiLpVault.balanceOf(BOB), bobLPBalance);
     vm.stopPrank();
+
+    // ALICE & BOB ALSO STAKE IN CURVES POOL
+    vm.startPrank(ALICE);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(ALICE, 50 ether);
+    CURVE_3POOL_LP.approve(address(curve3PoolLpVault), 50 ether);
+    curve3PoolLpVault.stake(50 ether);
+
+    assertEq(curve3PoolLpVault.balanceOf(ALICE), 50 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(ALICE, 50 ether);
+    CURVE_TRICRYPTO2_LP.approve(address(curveTriCrypto2LpVault), 50 ether);
+    curveTriCrypto2LpVault.stake(50 ether);
+
+    assertEq(curveTriCrypto2LpVault.balanceOf(ALICE), 50 ether);
+
+    vm.stopPrank();
+
+    vm.startPrank(BOB);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(BOB, 50 ether);
+    CURVE_3POOL_LP.approve(address(curve3PoolLpVault), 50 ether);
+    curve3PoolLpVault.stake(50 ether);
+
+    assertEq(curve3PoolLpVault.balanceOf(BOB), 50 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(BOB, 50 ether);
+    CURVE_TRICRYPTO2_LP.approve(address(curveTriCrypto2LpVault), 50 ether);
+    curveTriCrypto2LpVault.stake(50 ether);
+
+    assertEq(curveTriCrypto2LpVault.balanceOf(BOB), 50 ether);
+
+    vm.stopPrank();
+
+    assertEq(100 ether, curve3PoolLpVault.totalSupply());
+    assertEq(100 ether, curveTriCrypto2LpVault.totalSupply());
 
     // Cat Stakes ALL POWAA-ETH Univswap V2 LP Token to the contract
     // Cat's current LP balance = 100000e18 * 100e18 / 100000e18 = 100 LP
@@ -197,13 +250,35 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // other 2% of 3.993968465987648302 will =~ 0.079879369319752966 be transferred to the Controller (and fund to Executor)
     // hence, the total ETH that the usdcTokenVault should receive is 3.993968465987648302 - (0.199698423299382415 * 2) - 0.079879369319752966 = 3.514692250069130506
     // -----
+    // For 3Pool Curve LP TokenVault, the total 100 LP (50 LP for Alice and Bob) can be removed into ~0.02 ETH (37.935500903191657811 DAI, 35.274198 USDC, 28.974253 USDT)
+    // 3469.450221 USDC can be swapped into 1.993968467066810624 ETH,
+    // 37.935500903191657811 DAI can be swapped for 0.021801096305316384 ETH
+    // 35.274198 USDC can be swapped for 0.020274615839781213 ETH
+    // 28.974253 USDT can be swapped for 0.016651771447530898 USDT
+    // thus, the result of removing liquidity + swap is 0.021801096305316384 + 0.020274615839781213 + 0.016651771447530898 = 0.058727483592628495 ETH
+    // 5% of 0.058727483592628495  =~ 0.002936374179631424 will be transferred to the treasury
+    // other 5% of 0.058727483592628495 will =~ 0.002936374179631424 be transferred to the GovLPVault
+    // other 2% of 0.058727483592628495 will =~ 0.001174549671852569 be transferred to the Controller (and fund to Executor)
+    // hence, the total ETH that the usdcTokenVault should receive is 0.058727483592628495 - (0.002936374179631424 * 2) - 0.001174549671852569 = 0.051680185561513078
+    // -----
+    // For TriCrypto2 Curve LP TokenVault, the total 100 LP (50 LP for Alice and Bob) can be removed into ~20 ETH (353.83479029 USDT, 1.48306016 Wrapped BTC, 20.27468113890648075 Wrapped ETH)
+    // 353.83479029 USDT can be swapped for 20.330745444445895838 USDT
+    // 1.48306016 WBTC can be swapped for 20.157704113111638623 ETH
+    // thus, the result of removing liquidity + swap is 20.330745444445895838 + 20.157704113111638623 + 20.27468113890648075 = 60.763130696464015211 ETH
+    // 5% of 60.763130696464015211  =~ 3.03815653482320076 will be transferred to the treasury
+    // other 5% of 60.763130696464015211 will =~ 3.03815653482320076 be transferred to the GovLPVault
+    // other 2% of 60.763130696464015211 will =~ 1.215262613929280304 be transferred to the Controller (and fund to Executor)
+    // hence, the total ETH that the usdcTokenVault should receive is 60.763130696464015211 - (3.03815653482320076 * 2) - 1.215262613929280304 = 53.471555012888333387
+    // -----
     // For GovLPVault, the total of 150 LP canbe removed into 150 ETH and 150 POWAA
     // for ETH, since there is a 5% reward from USDC TokenVault as well, thus the total ETH that the govLPVault should receive is 150 + 0.043108017901645590 + 0.199698423299382415 = 150.242806441201028005
-    address[] memory vaults = new address[](4);
+    address[] memory vaults = new address[](6);
     vaults[0] = address(usdcTokenVault);
     vaults[1] = address(usdcEthSushiLpVault);
     vaults[2] = address(usdtEthSushiLpVault);
-    vaults[3] = address(govLPVault);
+    vaults[3] = address(curve3PoolLpVault);
+    vaults[4] = address(curveTriCrypto2LpVault);
+    vaults[5] = address(govLPVault);
     // Fund Money to the executer
     vm.deal(EXECUTOR, 10 ether);
     uint256 executerEthBalanceBefore = EXECUTOR.balance;
@@ -235,11 +310,36 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     );
     vm.expectEmit(true, true, true, true);
     emit Migrate(0.000052478396121076 ether, 3.514692250069130506 ether);
+
+    // Migrate 3Pool LP Vault
+    vm.expectEmit(true, true, true, true);
+    // total 58727483592628495
+    emit Execute(
+      0.051680185561513078 ether,
+      0.002936374179631424 ether,
+      0.001174549671852569 ether,
+      0.002936374179631424 ether
+    );
+    vm.expectEmit(true, true, true, true);
+    emit Migrate(100 ether, 51680185561513078);
+
+    // Migrate TriCrypto2 LP Vault
+    vm.expectEmit(true, true, true, true);
+    // total 60763130696464015211
+    emit Execute(
+      53.471555012888333387 ether,
+      3.03815653482320076 ether,
+      1.215262613929280304 ether,
+      3.03815653482320076 ether
+    );
+    vm.expectEmit(true, true, true, true);
+    emit Migrate(100 ether, 53471555012888333387);
+
     // Migrate GovLP Vault
     vm.expectEmit(true, true, true, true);
     emit Execute(150 ether, 150 ether);
     vm.expectEmit(true, true, true, true);
-    emit Migrate(150 ether, 150.242806441201028005 ether, 150 ether);
+    emit Migrate(150 ether, 153.283899350203860189 ether, 150 ether);
     // Migrate Vaults Events
     vm.expectEmit(true, true, true, true);
     emit Migrate(vaults);
@@ -249,20 +349,23 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     uint256 executerEthBalanceAfter = EXECUTOR.balance;
     // 50% of withdrawal fee will be distributed to the Executor treasury = 0.002873876295998942/2 = 0.001436938147999471 ETH
     // 2% of 0.862160374848613355 will =~ 0.017243207160658236 be transferred to the Controller (and fund to the Executor)
-    // thus, the Executor shall has 0.001436938147999471 + 0.017243207160658236 + 0.079879369319752966 = 0.098559514628410673 ETH
+    // thus, the Executor shall has 0.001436938147999471 + 0.017243207160658236 + 0.079879369319752966 + 0.001174549671852569 + 1.215262613929280304 = 1.314996678229543546 ETH
     assertEq(
       executerEthBalanceAfter - executerEthBalanceBefore,
-      0.098559514628410673 ether
+      1.314996678229543546 ether
     );
     // 50% of withdrawal fee will be distributed to the withdrawal treasury = 0.002873876295998942/2 = 0.001436938147999471 ETH
     assertEq(WITHDRAWAL_TREASURY.balance, 0.001436938147999471 ether);
 
-    // Treasury balance = 0.043108017901645590(USDC vault) + 0.199698423299382415(USDT-ETH LP vault) = 0.242806441201028005
-    assertEq(TREASURY.balance, 0.242806441201028005 ether);
+    // Treasury balance = 0.043108017901645590(USDC vault) + 0.199698423299382415(USDT-ETH LP vault)
+    // + 0.002936374179631424 (3Pool Vault) + 3.03815653482320076 (TriCrypto Vault)
+    // = 3.283899350203860189
+    assertEq(TREASURY.balance, 3.283899350203860189 ether);
+
     assertEq(usdcTokenVault.ethSupply(), address(usdcTokenVault).balance);
     assertEq(address(usdcTokenVault).balance, 0.758701115068962403 ether);
     assertEq(govLPVault.ethSupply(), address(govLPVault).balance);
-    assertEq(address(govLPVault).balance, 150.242806441201028005 ether);
+    assertEq(address(govLPVault).balance, 153.283899350203860189 ether);
     assertEq(govLPVault.powaaSupply(), 150 ether);
     vm.stopPrank();
 
@@ -335,7 +438,7 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     vm.stopPrank();
 
     // Cat claims her ETH, since Cat owns 66.666% of the supply,
-    // Cat would receive 100 * 150.242806441201028005 / 150 =~ 100.161870960800685336 ETH
+    // Cat would receive 100 * 153.283899350203860189 / 150 =~ 102.189266233469240126 ETH
     // Cat would receive 100 * 150 / 150 =~ 100 POWAA
     // After a certain amount of time (7 days ~=  604800 sec)
     // 604800 * 10 POWWA = 6048000 total POWWA to be distributed
@@ -347,12 +450,13 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     vm.expectEmit(true, true, true, true);
     emit RewardPaid(CAT, 4032000 ether);
     vm.expectEmit(true, true, true, true);
-    emit ClaimETHPOWAA(CAT, 100.161870960800685336 ether, 100 ether);
+    emit ClaimETHPOWAA(CAT, 102.189266233469240126 ether, 100 ether);
 
     govLPVault.claimETHPOWAA();
 
     assertEq(govLPVault.balanceOf(CAT), 0);
-    assertEq(CAT.balance, 100.161870960800685336 ether);
+
+    assertEq(CAT.balance, 102.189266233469240126 ether);
     assertEq(POWAAToken.balanceOf(CAT), 4032100 ether);
 
     // Cat try to withdraw, shouldn't be able to do so
@@ -361,12 +465,12 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
 
     // Cat try to claims her ETH again, shouldn't be able to do so
     govLPVault.claimETHPOWAA();
-    assertEq(CAT.balance, 100.161870960800685336 ether);
+    assertEq(CAT.balance, 102.189266233469240126 ether);
     assertEq(POWAAToken.balanceOf(CAT), 4032100 ether);
     vm.stopPrank();
 
     // Eve claims her ETH, since Eve owns 33.333% of the supply,
-    // Eve would receive 50 * 150.242806441201028005 / 150 =~ 50.080935480400342668 ETH
+    // Eve would receive 50 * 153.283899350203860189 / 150 =~ 51.094633116734620063 ETH
     // Eve would receive 50 * 150 / 150 =~ 50 POWAA
     vm.startPrank(EVE);
     // EVE doesn't have 0 ether, need to reset her for good
@@ -374,7 +478,7 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     vm.expectEmit(true, true, true, true);
     emit RewardPaid(EVE, 2016000 ether);
     vm.expectEmit(true, true, true, true);
-    emit ClaimETHPOWAA(EVE, 50.080935480400342668 ether, 50 ether);
+    emit ClaimETHPOWAA(EVE, 51.094633116734620063 ether, 50 ether);
 
     // After a certain amount of time (7 days ~=  604800 sec)
     // 604800 * 10 POWWA = 6048000 total POWWA to be distributed
@@ -383,12 +487,12 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     govLPVault.claimETHPOWAA();
 
     assertEq(govLPVault.balanceOf(EVE), 0);
-    assertEq(EVE.balance, 50.080935480400342668 ether);
+    assertEq(EVE.balance, 51.094633116734620063 ether);
     assertEq(POWAAToken.balanceOf(EVE), 2016050 ether);
 
     // Cat try to claims her ETH again, shouldn't be able to do so
     govLPVault.claimETHPOWAA();
-    assertEq(EVE.balance, 50.080935480400342668 ether);
+    assertEq(EVE.balance, 51.094633116734620063 ether);
     assertEq(POWAAToken.balanceOf(EVE), 2016050 ether);
     vm.stopPrank();
   }

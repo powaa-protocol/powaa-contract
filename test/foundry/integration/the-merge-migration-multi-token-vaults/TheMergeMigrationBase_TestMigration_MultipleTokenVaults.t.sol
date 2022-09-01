@@ -620,6 +620,46 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     assertEq(usdtEthSushiLpVault.balanceOf(BOB), bobLPBalance);
     vm.stopPrank();
 
+    // ALICE & BOB ALSO STAKE IN CURVES POOL
+    vm.startPrank(ALICE);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(ALICE, 25 ether);
+    CURVE_3POOL_LP.approve(address(curve3PoolLpVault), 25 ether);
+    curve3PoolLpVault.stake(25 ether);
+
+    assertEq(curve3PoolLpVault.balanceOf(ALICE), 25 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(ALICE, 75 ether);
+    CURVE_TRICRYPTO2_LP.approve(address(curveTriCrypto2LpVault), 75 ether);
+    curveTriCrypto2LpVault.stake(75 ether);
+
+    assertEq(curveTriCrypto2LpVault.balanceOf(ALICE), 75 ether);
+
+    vm.stopPrank();
+
+    vm.startPrank(BOB);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(BOB, 75 ether);
+    CURVE_3POOL_LP.approve(address(curve3PoolLpVault), 75 ether);
+    curve3PoolLpVault.stake(75 ether);
+
+    assertEq(curve3PoolLpVault.balanceOf(BOB), 75 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(BOB, 25 ether);
+    CURVE_TRICRYPTO2_LP.approve(address(curveTriCrypto2LpVault), 25 ether);
+    curveTriCrypto2LpVault.stake(25 ether);
+
+    assertEq(curveTriCrypto2LpVault.balanceOf(BOB), 25 ether);
+
+    vm.stopPrank();
+
+    assertEq(100 ether, curve3PoolLpVault.totalSupply());
+    assertEq(100 ether, curveTriCrypto2LpVault.totalSupply());
+
     // Cat Stakes ALL POWAA-ETH Univswap V2 LP Token to the contract
     // Cat's current LP balance = 100000e18 * 100e18 / 100000e18 = 100 LP
     vm.startPrank(CAT);
@@ -679,15 +719,21 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     vm.expectRevert(abi.encodeWithSignature("TokenVault_NotOwner()"));
     controller.migrate();
 
+    vm.expectEmit(true, true, true, true);
+    emit SetRegisterVault(address(usdtEthSushiLpVault), false);
+    vm.expectEmit(true, true, true, true);
+    emit SetRegisterVault(address(curve3PoolLpVault), false);
+    vm.expectEmit(true, true, true, true);
+    emit SetRegisterVault(address(curveTriCrypto2LpVault), false);
+    controller.setRegisterVault(address(usdtEthSushiLpVault), false);
+    controller.setRegisterVault(address(curve3PoolLpVault), false);
+    controller.setRegisterVault(address(curveTriCrypto2LpVault), false);
+
     // Warp to the end of the campaign
     // Now, chainId has been chagned to ETH POW MAINNET, let's migrate the token so we get all ETH POW
     vm.roll(campaignEndBlock);
     vm.warp(periodFinish);
     vm.chainId(POW_ETH_MAINNET);
-
-    vm.expectEmit(true, true, true, true);
-    emit SetRegisterVault(address(usdtEthSushiLpVault), false);
-    controller.setRegisterVault(address(usdtEthSushiLpVault), false);
 
     // For USDC TokenVault, the total 1500 USDC can be swapped into 0.862160374848613355 ETH
     // 5% of 0.862160374848613355 =~ 0.043108017901645590 will be transferred to the treasury
@@ -695,17 +741,21 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // other 2% of 0.862160374848613355 will =~ 0.017243207160658236 be transferred to the Controller (and fund to Executor)
     // hence, the total ETH that the usdcTokenVault should receive is 0.862160374848613355 - (0.043108017901645590 * 2) - 0.017243207160658236 = 0.758701115068962403
     // -----
-    /// For USDC-ETH, no total supply, hence continue
+    // For USDT-ETH SUSHI LP TokenVault, it's been unregistered, hence it will be skipped
     // -----
-    // For USDT-ETH SUSHI LP TokenVault, it's been unregistered, hence no need to track this pool
+    // For 3Pool Curve LP TokenVault, it's been unregistered, hence it will be skipped
+    // -----
+    // For TriCrypto2 Curve LP TokenVault, it's been unregistered, hence it will be skipped
     // -----
     // For GovLPVault, the total of 150 LP canbe removed into 150 ETH and 150 POWAA
-    // for ETH, since there is a 5% reward from USDC TokenVault as well, thus the total ETH that the govLPVault should receive is 150 + 0.043108017901645590 + 0.199698423299382415 = 150.242806441201028005
-    address[] memory vaults = new address[](4);
+    // for ETH, since there is a 5% reward from USDC TokenVault as well, thus the total ETH that the govLPVault should receive is 150 + 0.043108017901645590 = 150.043108017901645590 = 150043108017901645590
+    address[] memory vaults = new address[](6);
     vaults[0] = address(usdcTokenVault);
     vaults[1] = address(usdcEthSushiLpVault);
     vaults[2] = address(usdtEthSushiLpVault);
-    vaults[3] = address(govLPVault);
+    vaults[3] = address(curve3PoolLpVault);
+    vaults[4] = address(curveTriCrypto2LpVault);
+    vaults[5] = address(govLPVault);
     // Fund Money to the executer
     vm.deal(EXECUTOR, 10 ether);
     uint256 executerEthBalanceBefore = EXECUTOR.balance;
@@ -737,6 +787,10 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     emit Migrate(vaults);
 
     controller.migrate();
+
+    // After migrate, time to claim rewards
+    vm.roll(campaignEndBlock + 1);
+    vm.warp(periodFinish + 1);
 
     uint256 executerEthBalanceAfter = EXECUTOR.balance;
     // 50% of withdrawal fee will be distributed to the Executor treasury = 0.002873876295998942/2 = 0.001436938147999471 ETH
@@ -771,6 +825,27 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // Alice try to claims her ETH again, shouldn't be able to do so
     usdcTokenVault.claimETH();
     assertEq(ALICE.balance, 0.505800743379308268 ether);
+
+    // Since Alice also participate in USDT-ETH sushi lp vault (usdtEthSushiLpVault) and curve vaults (curve3PoolLpVault, curveTriCrypto2LpVault), but sadly, this vault is no longer registered,
+    // Alice still be able to withdraw ALL OF her staking token out
+    assertEq(usdtEthSushiLpVault.balanceOf(ALICE), aliceLPBalance);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(ALICE, aliceLPBalance, 0);
+    usdtEthSushiLpVault.withdraw(aliceLPBalance);
+    assertEq(usdtEthSushiLpVault.balanceOf(ALICE), 0);
+
+    assertEq(curve3PoolLpVault.balanceOf(ALICE), 25 ether);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(ALICE, 25 ether, 0);
+    curve3PoolLpVault.withdraw(25 ether);
+    assertEq(curve3PoolLpVault.balanceOf(ALICE), 0);
+
+    assertEq(curveTriCrypto2LpVault.balanceOf(ALICE), 75 ether);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(ALICE, 75 ether, 0);
+    curveTriCrypto2LpVault.withdraw(75 ether);
+    assertEq(curveTriCrypto2LpVault.balanceOf(ALICE), 0);
+
     vm.stopPrank();
 
     // Bob claims his ETH, since Bob owns 33.333% of the supply,
@@ -791,6 +866,27 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // Bob try to claims his ETH again, shouldn't be able to do so
     usdcTokenVault.claimETH();
     assertEq(BOB.balance, 0.252900371689654134 ether);
+
+    // Since Bob also participate in USDT-ETH sushi lp vault (usdtEthSushiLpVault) and curve vaults (curve3PoolLpVault, curveTriCrypto2LpVault), but sadly, this vault is no longer registered,
+    // Bob still be able to withdraw ALL OF her staking token out
+    assertEq(usdtEthSushiLpVault.balanceOf(BOB), bobLPBalance);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(BOB, bobLPBalance, 0);
+    usdtEthSushiLpVault.withdraw(bobLPBalance);
+    assertEq(usdtEthSushiLpVault.balanceOf(BOB), 0);
+
+    assertEq(curve3PoolLpVault.balanceOf(BOB), 75 ether);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(BOB, 75 ether, 0);
+    curve3PoolLpVault.withdraw(75 ether);
+    assertEq(curve3PoolLpVault.balanceOf(BOB), 0);
+
+    assertEq(curveTriCrypto2LpVault.balanceOf(BOB), 25 ether);
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(BOB, 25 ether, 0);
+    curveTriCrypto2LpVault.withdraw(25 ether);
+    assertEq(curveTriCrypto2LpVault.balanceOf(BOB), 0);
+
     vm.stopPrank();
 
     // Cat claims her ETH, since Cat owns 66.666% of the supply,

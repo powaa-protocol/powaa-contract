@@ -261,7 +261,7 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // other 2% of 0.058727483592628495 will =~ 0.001174549671852569 be transferred to the Controller (and fund to Executor)
     // hence, the total ETH that the usdcTokenVault should receive is 0.058727483592628495 - (0.002936374179631424 * 2) - 0.001174549671852569 = 0.051680185561513078
     // -----
-    // For TriCrypto2 Curve LP TokenVault, the total 100 LP (50 LP for Alice and Bob) can be removed into ~20 ETH (353.83479029 USDT, 1.48306016 Wrapped BTC, 20.27468113890648075 Wrapped ETH)
+    // For TriCrypto2 Curve LP TokenVault, the total 100 LP (50 LP for Alice and Bob) can be removed into ~20 ETH (35383.479029 USDT, 1.48306016 Wrapped BTC, 20.27468113890648075 Wrapped ETH)
     // 353.83479029 USDT can be swapped for 20.330745444445895838 ETH
     // 1.48306016 WBTC can be swapped for 20.157704113111638623 ETH
     // thus, the result of removing liquidity + swap is 20.330745444445895838 + 20.157704113111638623 + 20.27468113890648075 = 60.763130696464015211 ETH
@@ -321,7 +321,7 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
       0.002936374179631424 ether
     );
     vm.expectEmit(true, true, true, true);
-    emit Migrate(100 ether, 51680185561513078);
+    emit Migrate(100 ether, 0.051680185561513078 ether);
 
     // Migrate TriCrypto2 LP Vault
     vm.expectEmit(true, true, true, true);
@@ -333,7 +333,7 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
       3.03815653482320076 ether
     );
     vm.expectEmit(true, true, true, true);
-    emit Migrate(100 ether, 53471555012888333387);
+    emit Migrate(100 ether, 53.471555012888333387 ether);
 
     // Migrate GovLP Vault
     vm.expectEmit(true, true, true, true);

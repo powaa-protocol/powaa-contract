@@ -254,7 +254,7 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // 3469.450221 USDC can be swapped into 1.993968467066810624 ETH,
     // 37.935500903191657811 DAI can be swapped for 0.021801096305316384 ETH
     // 35.274198 USDC can be swapped for 0.020274615839781213 ETH
-    // 28.974253 USDT can be swapped for 0.016651771447530898 USDT
+    // 28.974253 USDT can be swapped for 0.016651771447530898 ETH
     // thus, the result of removing liquidity + swap is 0.021801096305316384 + 0.020274615839781213 + 0.016651771447530898 = 0.058727483592628495 ETH
     // 5% of 0.058727483592628495  =~ 0.002936374179631424 will be transferred to the treasury
     // other 5% of 0.058727483592628495 will =~ 0.002936374179631424 be transferred to the GovLPVault
@@ -262,7 +262,7 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // hence, the total ETH that the usdcTokenVault should receive is 0.058727483592628495 - (0.002936374179631424 * 2) - 0.001174549671852569 = 0.051680185561513078
     // -----
     // For TriCrypto2 Curve LP TokenVault, the total 100 LP (50 LP for Alice and Bob) can be removed into ~20 ETH (353.83479029 USDT, 1.48306016 Wrapped BTC, 20.27468113890648075 Wrapped ETH)
-    // 353.83479029 USDT can be swapped for 20.330745444445895838 USDT
+    // 353.83479029 USDT can be swapped for 20.330745444445895838 ETH
     // 1.48306016 WBTC can be swapped for 20.157704113111638623 ETH
     // thus, the result of removing liquidity + swap is 20.330745444445895838 + 20.157704113111638623 + 20.27468113890648075 = 60.763130696464015211 ETH
     // 5% of 60.763130696464015211  =~ 3.03815653482320076 will be transferred to the treasury

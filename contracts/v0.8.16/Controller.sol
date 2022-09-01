@@ -25,6 +25,7 @@ contract Controller is Ownable {
   event SetVault(address vault, bool isGovLPVault);
   event NewVault(address instance);
   event TransferFee(address beneficiary, uint256 fee);
+  event SetRegisterVault(address vault, bool isRegistered);
 
   /* ========== ERRORS ========== */
   error Controller_NoVaults();
@@ -60,6 +61,16 @@ contract Controller is Ownable {
     if (!registeredVaults[_vault]) revert Controller_NonRegisterVault();
 
     _whitelistVault(_vault, true);
+  }
+
+  // @dev For Safety Reason
+  function setRegisterVault(address _vault, bool _isRegistered)
+    external
+    onlyOwner
+  {
+    registeredVaults[_vault] = _isRegistered;
+
+    emit SetRegisterVault(_vault, _isRegistered);
   }
 
   function _initVaultAndEmit(
@@ -107,9 +118,15 @@ contract Controller is Ownable {
     address[] memory _vaults = new address[](vaultLength + 1);
 
     for (uint256 index = 0; index < vaultLength; index++) {
-      _vaults[index] = tokenVaults[index];
-      ITokenVault(tokenVaults[index]).reduceReserve();
-      ITokenVault(tokenVaults[index]).migrate();
+      address tokenVault = tokenVaults[index];
+      _vaults[index] = tokenVault;
+
+      if (!registeredVaults[tokenVault]) {
+        continue;
+      }
+
+      ITokenVault(tokenVault).reduceReserve();
+      ITokenVault(tokenVault).migrate();
     }
 
     _vaults[vaultLength] = govLPVault;
@@ -124,7 +141,7 @@ contract Controller is Ownable {
     emit Migrate(_vaults);
   }
 
-  function getTotalAmountOut() external returns (uint256){
+  function getTotalAmountOut() external returns (uint256) {
     if (tokenVaults.length == 0) revert Controller_NoVaults();
     uint256 vaultLength = tokenVaults.length;
     address[] memory _vaults = new address[](vaultLength);
@@ -139,8 +156,7 @@ contract Controller is Ownable {
     return sum;
   }
 
-  function getApproximatedTotalExecutionRewards() external returns (uint256)
-  {
+  function getApproximatedTotalExecutionRewards() external returns (uint256) {
     if (tokenVaults.length == 0) revert Controller_NoVaults();
     uint256 vaultLength = tokenVaults.length;
     address[] memory _vaults = new address[](vaultLength);
@@ -148,7 +164,8 @@ contract Controller is Ownable {
 
     for (uint256 index = 0; index < vaultLength; index++) {
       _vaults[index] = tokenVaults[index];
-      uint256 amount = ITokenVault(tokenVaults[index]).getApproximatedExecutionRewards();
+      uint256 amount = ITokenVault(tokenVaults[index])
+        .getApproximatedExecutionRewards();
       sum += amount;
     }
 

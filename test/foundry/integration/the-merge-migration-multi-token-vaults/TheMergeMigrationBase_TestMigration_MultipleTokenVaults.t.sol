@@ -4,12 +4,16 @@ pragma solidity 0.8.16;
 
 import "./TheMergeMigrationMultiTokensBase.t.sol";
 
+import "../../../../lib/solmate/src/utils/FixedPointMathLib.sol";
+
 /// @title An abstraction of the The merge migration scenario Testing contract, containing a scaffolding method for creating the fixture
 /// @notice This testing scheme would cover only migration steps started with vault creation until claiming ETH
 /// @dev Vault(s): USDC,  GovLPVault: POWAA-ETH
 contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
   TheMergeMigrationMultiTokensBase
 {
+  using FixedPointMathLib for uint256;
+
   address[] public TOKEN_VAULT_MIGRATION_PARTICIPANTS = [ALICE, BOB];
   address[] public GOV_LP_VAULT_MIGRATION_PARTICIPANTS = [CAT, EVE];
   uint256 usdtETHLPAmountETHUsed;
@@ -888,6 +892,173 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     assertEq(EVE.balance, 50 ether);
     assertEq(POWAAToken.balanceOf(EVE), 2016050 ether);
     vm.stopPrank();
+  }
+
+  function testGetApproximatedTotalExecutionRewards_WithHappyCase() external {
+    // *** Alice and Bob are going to participate in USDC tokenvault
+    // *** while Cat and Eve, instead, will participate in GOVLp tokenvault
+
+    // Alice Stakes 1000 USDC to the contract
+    vm.startPrank(ALICE);
+    USDC.approve(address(usdcTokenVault), 1000e6);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(ALICE, 1000e6);
+
+    usdcTokenVault.stake(1000e6);
+    assertEq(usdcTokenVault.balanceOf(ALICE), 1000e6);
+    vm.stopPrank();
+
+    // Bob Stakes 1000 USDC to the contract
+    vm.startPrank(BOB);
+    USDC.approve(address(usdcTokenVault), 1000e6);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(BOB, 1000e6);
+
+    usdcTokenVault.stake(1000e6);
+
+    assertEq(usdcTokenVault.balanceOf(BOB), 1000e6);
+    vm.stopPrank();
+
+    // Bob and Alice have 0.000026239198060538e18 USDT-ETH Sushi LP
+    uint256 aliceLPBalance = USDT_ETH_SUSHI_LP.balanceOf(ALICE);
+    uint256 bobLPBalance = USDT_ETH_SUSHI_LP.balanceOf(BOB);
+
+    // Alice Stakes her total USDT-ETH lp balance to the contract
+    vm.startPrank(ALICE);
+    USDT_ETH_SUSHI_LP.approve(address(usdtEthSushiLpVault), aliceLPBalance);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(ALICE, aliceLPBalance);
+
+    usdtEthSushiLpVault.stake(aliceLPBalance);
+    assertEq(usdtEthSushiLpVault.balanceOf(ALICE), aliceLPBalance);
+    vm.stopPrank();
+
+    // Bob Stakes his USDT-ETH LP Balance to the contract
+    vm.startPrank(BOB);
+    USDT_ETH_SUSHI_LP.approve(address(usdtEthSushiLpVault), bobLPBalance);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(BOB, bobLPBalance);
+
+    usdtEthSushiLpVault.stake(bobLPBalance);
+
+    assertEq(usdtEthSushiLpVault.balanceOf(BOB), bobLPBalance);
+    vm.stopPrank();
+
+    // ALICE & BOB ALSO STAKE IN CURVES POOL
+    vm.startPrank(ALICE);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(ALICE, 25 ether);
+    CURVE_3POOL_LP.approve(address(curve3PoolLpVault), 25 ether);
+    curve3PoolLpVault.stake(25 ether);
+
+    assertEq(curve3PoolLpVault.balanceOf(ALICE), 25 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(ALICE, 75 ether);
+    CURVE_TRICRYPTO2_LP.approve(address(curveTriCrypto2LpVault), 75 ether);
+    curveTriCrypto2LpVault.stake(75 ether);
+
+    assertEq(curveTriCrypto2LpVault.balanceOf(ALICE), 75 ether);
+
+    vm.stopPrank();
+
+    vm.startPrank(BOB);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(BOB, 75 ether);
+    CURVE_3POOL_LP.approve(address(curve3PoolLpVault), 75 ether);
+    curve3PoolLpVault.stake(75 ether);
+
+    assertEq(curve3PoolLpVault.balanceOf(BOB), 75 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(BOB, 25 ether);
+    CURVE_TRICRYPTO2_LP.approve(address(curveTriCrypto2LpVault), 25 ether);
+    curveTriCrypto2LpVault.stake(25 ether);
+
+    assertEq(curveTriCrypto2LpVault.balanceOf(BOB), 25 ether);
+
+    vm.stopPrank();
+
+    assertEq(100 ether, curve3PoolLpVault.totalSupply());
+    assertEq(100 ether, curveTriCrypto2LpVault.totalSupply());
+
+    // Cat Stakes ALL POWAA-ETH Univswap V2 LP Token to the contract
+    // Cat's current LP balance = 100000e18 * 100e18 / 100000e18 = 100 LP
+    vm.startPrank(CAT);
+    powaaETHUniswapV2LP.approve(address(govLPVault), 100 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(CAT, 100 ether);
+
+    govLPVault.stake(100 ether);
+
+    assertEq(govLPVault.balanceOf(CAT), 100 ether);
+    vm.stopPrank();
+
+    // Eve Stakes Half of POWAA-ETH Univswap V2 LP Token to the contract
+    // EVE's current LP balance = 101000e18 * 100e18 / 101000e18 = 100 LP
+    vm.startPrank(EVE);
+    powaaETHUniswapV2LP.approve(address(govLPVault), 50 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(EVE, 50 ether);
+
+    govLPVault.stake(50 ether);
+
+    assertEq(govLPVault.balanceOf(EVE), 50 ether);
+    vm.stopPrank();
+
+    uint256 periodFinish = usdcTokenVault.periodFinish();
+    uint256 campaignEndBlock = usdcTokenVault.campaignEndBlock();
+
+    // Warp to the end of the campaign
+    // Now, chainId has been chagned to ETH POW MAINNET, let's migrate the token so we get all ETH POW
+    vm.roll(campaignEndBlock);
+    vm.warp(periodFinish);
+    vm.chainId(POW_ETH_MAINNET);
+
+    // [NOTE] these are estimated value from Uniswap's Quoter
+    //  ~1.149546045420765471 (USDC vault)
+    //  ~3.993968465987645753 (usdtEthSushi LP vault)
+    //  ~0.058728319655362838 (3Pool Curve LP vault)
+    // ~60.764013365169022941 (TriCrypto Curve LP vault)
+    // totalEstimatedEth ~= 65.966256196232797003
+    uint256 totalEstimatedEth = controller.getTotalAmountOut();
+    assertEq(totalEstimatedEth, 65.966256196232797003 ether);
+
+    // 2% of the reward will be paid to the executor
+    // 2% of 65.966256196232797003 ~= 1.319325123924655938
+    uint256 approximatedExecutionReward = controller
+      .getApproximatedTotalExecutionRewards();
+    assertEq(approximatedExecutionReward, 1.319325123924655938 ether);
+
+    // Executor execute the migration
+    vm.deal(EXECUTOR, 10 ether);
+    uint256 executerEthBalanceBefore = EXECUTOR.balance;
+    vm.prank(EXECUTOR);
+    controller.migrate();
+
+    uint256 executerEthBalanceAfter = EXECUTOR.balance;
+
+    uint256 actualExecutionReward = executerEthBalanceAfter -
+      executerEthBalanceBefore;
+
+    uint256 acceptablePercentage = 0.005 ether; // 0.5%
+    uint256 acceptableDelta = acceptablePercentage.mulWadDown(
+      approximatedExecutionReward
+    );
+
+    assertApproxEqAbs(
+      approximatedExecutionReward,
+      actualExecutionReward,
+      acceptableDelta
+    );
   }
 
   /// @dev Fallback function to accept ETH.

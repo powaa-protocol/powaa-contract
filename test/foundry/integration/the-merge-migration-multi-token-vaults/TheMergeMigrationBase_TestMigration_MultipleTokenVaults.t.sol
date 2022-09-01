@@ -401,6 +401,38 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     assertEq(ALICE.balance, 2.263146868413873521 ether);
     vm.stopPrank();
 
+    // Alice claims her ETH, since Alice owns 25% of the supply,
+    // Alice would receive 25 * 0.051680185561513078 / 100 =~ 0.012920046390378269 ETH
+    vm.startPrank(ALICE);
+    vm.expectEmit(true, true, true, true);
+    emit ClaimETH(ALICE, 0.012920046390378269 ether);
+
+    curve3PoolLpVault.claimETH();
+
+    assertEq(usdcTokenVault.balanceOf(ALICE), 0);
+    assertEq(ALICE.balance, 2.27606691480425179 ether);
+
+    // Alice try to claims her ETH again, shouldn't be able to do so
+    curve3PoolLpVault.claimETH();
+    assertEq(ALICE.balance, 2.27606691480425179 ether);
+    vm.stopPrank();
+
+    // Alice claims her ETH, since Alice owns 75% of the supply,
+    // Alice would receive 75 * 53.471555012888333387 / 100 =~ 40.10366625966625004 ETH
+    vm.startPrank(ALICE);
+    vm.expectEmit(true, true, true, true);
+    emit ClaimETH(ALICE, 40.10366625966625004 ether);
+
+    curveTriCrypto2LpVault.claimETH();
+
+    assertEq(usdcTokenVault.balanceOf(ALICE), 0);
+    assertEq(ALICE.balance, 42.37973317447050183 ether);
+
+    // Alice try to claims her ETH again, shouldn't be able to do so
+    curveTriCrypto2LpVault.claimETH();
+    assertEq(ALICE.balance, 42.37973317447050183 ether);
+    vm.stopPrank();
+
     // Bob claims his ETH, since Bob owns 33.333% of the supply,
     // Bob would receive 500 * 0.758701115068962403 / 1500 =~ 0.252900371689654134 ETH
     vm.startPrank(BOB);
@@ -435,6 +467,38 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // Bob try to claims his ETH again, shouldn't be able to do so
     usdtEthSushiLpVault.claimETH();
     assertEq(BOB.balance, 2.010246496724219387 ether);
+    vm.stopPrank();
+
+    // BOB claims his ETH, since BOB owns 25% of the supply,
+    // BOB would receive 75 * 0.051680185561513078 / 100 =~ 0.038760139171134808 ETH
+    vm.startPrank(BOB);
+    vm.expectEmit(true, true, true, true);
+    emit ClaimETH(BOB, 0.038760139171134808 ether);
+
+    curve3PoolLpVault.claimETH();
+
+    assertEq(usdcTokenVault.balanceOf(BOB), 0);
+    assertEq(BOB.balance, 2.049006635895354195 ether);
+
+    // BOB try to claims his ETH again, shouldn't be able to do so
+    curve3PoolLpVault.claimETH();
+    assertEq(BOB.balance, 2.049006635895354195 ether);
+    vm.stopPrank();
+
+    // BOB claims his ETH, since BOB owns 75% of the supply,
+    // BOB would receive 25 * 53.471555012888333387 / 100 =~ 13.367888753222083346 ETH
+    vm.startPrank(BOB);
+    vm.expectEmit(true, true, true, true);
+    emit ClaimETH(BOB, 13.367888753222083346 ether);
+
+    curveTriCrypto2LpVault.claimETH();
+
+    assertEq(usdcTokenVault.balanceOf(BOB), 0);
+    assertEq(BOB.balance, 15.416895389117437541 ether);
+
+    // BOB try to claims his ETH again, shouldn't be able to do so
+    curveTriCrypto2LpVault.claimETH();
+    assertEq(BOB.balance, 15.416895389117437541 ether);
     vm.stopPrank();
 
     // Cat claims her ETH, since Cat owns 66.666% of the supply,

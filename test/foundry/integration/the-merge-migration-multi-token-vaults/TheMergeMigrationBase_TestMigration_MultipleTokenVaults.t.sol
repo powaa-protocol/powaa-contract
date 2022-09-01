@@ -135,36 +135,36 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     vm.startPrank(ALICE);
 
     vm.expectEmit(true, true, true, true);
-    emit Staked(ALICE, 50 ether);
-    CURVE_3POOL_LP.approve(address(curve3PoolLpVault), 50 ether);
-    curve3PoolLpVault.stake(50 ether);
+    emit Staked(ALICE, 25 ether);
+    CURVE_3POOL_LP.approve(address(curve3PoolLpVault), 25 ether);
+    curve3PoolLpVault.stake(25 ether);
 
-    assertEq(curve3PoolLpVault.balanceOf(ALICE), 50 ether);
+    assertEq(curve3PoolLpVault.balanceOf(ALICE), 25 ether);
 
     vm.expectEmit(true, true, true, true);
-    emit Staked(ALICE, 50 ether);
-    CURVE_TRICRYPTO2_LP.approve(address(curveTriCrypto2LpVault), 50 ether);
-    curveTriCrypto2LpVault.stake(50 ether);
+    emit Staked(ALICE, 75 ether);
+    CURVE_TRICRYPTO2_LP.approve(address(curveTriCrypto2LpVault), 75 ether);
+    curveTriCrypto2LpVault.stake(75 ether);
 
-    assertEq(curveTriCrypto2LpVault.balanceOf(ALICE), 50 ether);
+    assertEq(curveTriCrypto2LpVault.balanceOf(ALICE), 75 ether);
 
     vm.stopPrank();
 
     vm.startPrank(BOB);
 
     vm.expectEmit(true, true, true, true);
-    emit Staked(BOB, 50 ether);
-    CURVE_3POOL_LP.approve(address(curve3PoolLpVault), 50 ether);
-    curve3PoolLpVault.stake(50 ether);
+    emit Staked(BOB, 75 ether);
+    CURVE_3POOL_LP.approve(address(curve3PoolLpVault), 75 ether);
+    curve3PoolLpVault.stake(75 ether);
 
-    assertEq(curve3PoolLpVault.balanceOf(BOB), 50 ether);
+    assertEq(curve3PoolLpVault.balanceOf(BOB), 75 ether);
 
     vm.expectEmit(true, true, true, true);
-    emit Staked(BOB, 50 ether);
-    CURVE_TRICRYPTO2_LP.approve(address(curveTriCrypto2LpVault), 50 ether);
-    curveTriCrypto2LpVault.stake(50 ether);
+    emit Staked(BOB, 25 ether);
+    CURVE_TRICRYPTO2_LP.approve(address(curveTriCrypto2LpVault), 25 ether);
+    curveTriCrypto2LpVault.stake(25 ether);
 
-    assertEq(curveTriCrypto2LpVault.balanceOf(BOB), 50 ether);
+    assertEq(curveTriCrypto2LpVault.balanceOf(BOB), 25 ether);
 
     vm.stopPrank();
 

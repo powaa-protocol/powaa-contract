@@ -266,6 +266,27 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     ICurveFiStableSwap curveStableSwap = tokenVaultPoolRouter[msg.sender];
     uint24 underlyingCount = poolUnderlyingCount[address(curveStableSwap)];
 
+    if (stableSwapContainEth[address(curveStableSwap)]) {
+      StableSwapEthMetadata memory metadata = stableSwapEthMetadata[
+        address(curveStableSwap)
+      ];
+
+      uint256 approximatedEth;
+      if (metadata.isUintParam) {
+        approximatedEth = curveStableSwap.calc_withdraw_one_coin(
+          stakeAmount,
+          uint256(int256(metadata.ethIndex))
+        );
+      } else {
+        approximatedEth = curveStableSwap.calc_withdraw_one_coin(
+          stakeAmount,
+          metadata.ethIndex
+        );
+      }
+
+      return approximatedEth;
+    }
+
     uint256 ratio = stakeAmount.divWadDown(IERC20(lpToken).totalSupply());
     uint256 amountOut = 0;
     uint256 i;

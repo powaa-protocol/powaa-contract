@@ -1516,6 +1516,30 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
 
     vm.stopPrank();
 
+    // ALICE & BOB ALSO STAKE IN CURVE STETH POOL
+    vm.expectEmit(true, true, true, true);
+    emit Staked(ALICE, 25 ether);
+
+    vm.startPrank(ALICE);
+    CURVE_STETH_LP.approve(address(curveStEthLpVault), 25 ether);
+    curveStEthLpVault.stake(25 ether);
+    vm.stopPrank();
+
+    assertEq(curveStEthLpVault.balanceOf(ALICE), 25 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(BOB, 75 ether);
+
+    vm.startPrank(BOB);
+    CURVE_STETH_LP.approve(address(curveStEthLpVault), 75 ether);
+    curveStEthLpVault.stake(75 ether);
+    vm.stopPrank();
+
+    assertEq(curveStEthLpVault.balanceOf(BOB), 75 ether);
+
+    // ALICE 25 LP and BOB 75 LP
+    assertEq(100 ether, curveStEthLpVault.totalSupply());
+
     vm.startPrank(BOB);
 
     vm.expectEmit(true, true, true, true);
@@ -1573,19 +1597,22 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     vm.chainId(POW_ETH_MAINNET);
 
     // [NOTE] these are estimated value from Uniswap's Quoter
-    //  ~1.149546045420765471 (USDC vault)
-    //  ~3.993968465987645753 (usdtEthSushi LP vault)
-    //  ~0.058728319655362838 (3Pool Curve LP vault)
-    // ~60.764013365169022941 (TriCrypto Curve LP vault)
-    // totalEstimatedEth ~= 65.966256196232797003
+    //   ~1.149546045420765471 (USDC vault)
+    //   ~3.993968465987645753 (usdtEthSushi LP vault)
+    //   ~0.058728319655362838 (3Pool Curve LP vault)
+    // [NOTE] these are estimated value from StableSwap's calculate_withdraw_one_coin function
+    //  ~60.862835862281248030 (TriCrypto Curve LP vault)
+    // ~102.151273348510370556 (stEth Curve LP vault)
+
+    // totalEstimatedEth ~= 168.216352041855392648
     uint256 totalEstimatedEth = controller.getTotalAmountOut();
-    assertEq(totalEstimatedEth, 65.966256196232797003 ether);
+    assertEq(totalEstimatedEth, 168.216352041855392648 ether);
 
     // 2% of the reward will be paid to the executor
-    // 2% of 65.966256196232797003 ~= 1.319325123924655938
+    // 2% of 168.216352041855392648 ~= 3.364327040837107851
     uint256 approximatedExecutionReward = controller
       .getApproximatedTotalExecutionRewards();
-    assertEq(approximatedExecutionReward, 1.319325123924655938 ether);
+    assertEq(approximatedExecutionReward, 3.364327040837107851 ether);
 
     // Executor execute the migration
     vm.deal(EXECUTOR, 10 ether);

@@ -17,7 +17,7 @@ contract POWAA is Context, Ownable, ERC20("POWAA token", "POWAA") {
     _maxTotalSupply = maxTotalSupply_;
   }
 
-  function maxTotalSupply() public view virtual returns (uint256) {
+  function maxTotalSupply() external view virtual returns (uint256) {
     return _maxTotalSupply;
   }
 

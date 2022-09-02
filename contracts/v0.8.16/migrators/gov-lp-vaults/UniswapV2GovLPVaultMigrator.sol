@@ -33,6 +33,7 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   /* ========== EVENTS ========== */
   event WhitelistTokenVault(address tokenVault, bool whitelisted);
   event Execute(uint256 returnedETH, uint256 returnedBaseToken);
+  event WhitelistTokenVault(address tokenVault, bool whitelisted);
 
   /* ========== ERRORS ========== */
   error UniswapV2GovLPVaultMigrator_OnlyWhitelistedTokenVault();

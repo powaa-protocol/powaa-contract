@@ -49,6 +49,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     uint256 controllerReward,
     uint256 govLPTokenVaultReward
   );
+  event WhitelistTokenVault(address tokenVault, bool whitelisted);
 
   /* ========== ERRORS ========== */
   error SushiSwapLPVaultMigrator_OnlyWhitelistedTokenVault();
@@ -95,11 +96,13 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   }
 
   /* ========== ADMIN FUNCTIONS ========== */
-  function whitelistTokenVault(address tokenVault, bool isOk)
+  function whitelistTokenVault(address _tokenVault, bool _isOk)
     external
     onlyOwner
   {
-    tokenVaultOK[tokenVault] = isOk;
+    tokenVaultOK[_tokenVault] = _isOk;
+
+    emit WhitelistTokenVault(_tokenVault, _isOk);
   }
 
   /* ========== EXTERNAL FUNCTIONS ========== */

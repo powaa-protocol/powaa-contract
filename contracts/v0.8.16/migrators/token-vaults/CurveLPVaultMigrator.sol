@@ -23,6 +23,11 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeERC20 for IERC20;
 
   /* ========== CONSTANT ========== */
+  address public constant CURVE_STETH_STABLE_SWAP =
+    0xDC24316b9AE028F1497c275EB9192a3Ea0f67022;
+  address public constant CURVE_TRICRYPTO2_STABLE_SWAP =
+    0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
+
   address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
@@ -41,6 +46,9 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   mapping(address => bool) public tokenVaultOK;
   mapping(address => ICurveFiStableSwap) public tokenVaultPoolRouter;
   mapping(address => uint24) public poolUnderlyingCount;
+
+  mapping(address => bool) public stableSwapContainEth;
+  mapping(address => uint256) public stableSwapEthIndex;
 
   /* ========== EVENTS ========== */
   event Execute(
@@ -79,6 +87,14 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
     uniswapRouter = _uniswapRouter;
     quoter = _quoter;
+
+    // stETH Pool contain ETH at index 0
+    stableSwapContainEth[CURVE_STETH_STABLE_SWAP] = true;
+    stableSwapEthIndex[CURVE_STETH_STABLE_SWAP] = 0;
+
+    // TriCrypto2 Pool contain Wrapped ETH at index 2
+    stableSwapContainEth[CURVE_TRICRYPTO2_STABLE_SWAP] = true;
+    stableSwapEthIndex[CURVE_TRICRYPTO2_STABLE_SWAP] = 2;
   }
 
   /* ========== MODIFIERS ========== */
@@ -119,41 +135,50 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     ICurveFiStableSwap curveStableSwap = tokenVaultPoolRouter[msg.sender];
 
     uint256 liquidity = IERC20(lpToken).balanceOf(address(this));
-    IERC20(lpToken).approve(address(curveStableSwap), liquidity);
+    IERC20(lpToken).safeApprove(address(curveStableSwap), liquidity);
 
     uint24 underlyingCount = poolUnderlyingCount[address(curveStableSwap)];
 
-    if (underlyingCount == 3) {
-      curveStableSwap.remove_liquidity(
+    if (stableSwapContainEth[address(curveStableSwap)]) {
+      uint256 ethIndex = stableSwapEthIndex[address(curveStableSwap)];
+      curveStableSwap.remove_liquidity_one_coin(
         liquidity,
-        [uint256(0), uint256(0), uint256(0)]
+        ethIndex,
+        uint256(0)
       );
     } else {
-      curveStableSwap.remove_liquidity(liquidity, [uint256(0), uint256(0)]);
-    }
+      if (underlyingCount == 3) {
+        curveStableSwap.remove_liquidity(
+          liquidity,
+          [uint256(0), uint256(0), uint256(0)]
+        );
+      } else {
+        curveStableSwap.remove_liquidity(liquidity, [uint256(0), uint256(0)]);
+      }
 
-    uint256 i;
-    for (i = 0; i < underlyingCount; i++) {
-      address coinAddress = curveStableSwap.coins((i));
+      uint256 i;
+      for (i = 0; i < underlyingCount; i++) {
+        address coinAddress = curveStableSwap.coins((i));
 
-      // ETH is already counted in this address balance
-      // swapping WETH is unnecessary
-      if (coinAddress != ETH && coinAddress != WETH9) {
-        uint256 swapAmount = IERC20(coinAddress).balanceOf(address(this));
-        IERC20(coinAddress).safeApprove(address(uniswapRouter), swapAmount);
+        // ETH is already counted in this address balance
+        // swapping WETH is unnecessary
+        if (coinAddress != ETH && coinAddress != WETH9) {
+          uint256 swapAmount = IERC20(coinAddress).balanceOf(address(this));
+          IERC20(coinAddress).safeApprove(address(uniswapRouter), swapAmount);
 
-        IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
-          .ExactInputSingleParams({
-            tokenIn: coinAddress,
-            tokenOut: WETH9,
-            fee: poolFee,
-            recipient: address(this),
-            amountIn: swapAmount,
-            amountOutMinimum: 0,
-            sqrtPriceLimitX96: 0
-          });
+          IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
+            .ExactInputSingleParams({
+              tokenIn: coinAddress,
+              tokenOut: WETH9,
+              fee: poolFee,
+              recipient: address(this),
+              amountIn: swapAmount,
+              amountOutMinimum: 0,
+              sqrtPriceLimitX96: 0
+            });
 
-        uniswapRouter.exactInputSingle(params);
+          uniswapRouter.exactInputSingle(params);
+        }
       }
     }
 

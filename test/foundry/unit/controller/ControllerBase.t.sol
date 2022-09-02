@@ -10,12 +10,14 @@ import "../../../../contracts/v0.8.16/Controller.sol";
 abstract contract ControllerBaseTest is BaseTest {
   MockTokenVault internal mockTokenVaultImpl;
   MockGovLPVault internal mockGovLPVaultImpl;
+  MockGovLPVault internal mockGovLPVaultImpl2;
   Controller internal controller;
 
   /// @dev Foundry's setUp method
   function setUp() public virtual {
     mockTokenVaultImpl = new MockTokenVault();
     mockGovLPVaultImpl = new MockGovLPVault();
+    mockGovLPVaultImpl2 = new MockGovLPVault();
     controller = _setupController();
   }
 

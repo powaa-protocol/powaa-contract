@@ -44,6 +44,22 @@ contract Controller_TestDeployVault is ControllerBaseTest {
     return deterministicAddress;
   }
 
+  function test_WhenImplIsDifferent_WithTheSameSalt() external {
+    address deterministicAddress1 = _deployVault(
+      MOCK_STAKING_TOKEN,
+      address(mockGovLPVaultImpl),
+      true
+    );
+
+    address deterministicAddress2 = _deployVault(
+      MOCK_STAKING_TOKEN,
+      address(mockGovLPVaultImpl2),
+      true
+    );
+
+    assertTrue(deterministicAddress1 != deterministicAddress2);
+  }
+
   function test_WhenCallerIsNotTheOwner() external {
     vm.startPrank(ALICE);
     vm.expectRevert(abi.encodePacked("Ownable: caller is not the owner"));

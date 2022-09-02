@@ -1600,6 +1600,7 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     //   ~1.149546045420765471 (USDC vault)
     //   ~3.993968465987645753 (usdtEthSushi LP vault)
     //   ~0.058728319655362838 (3Pool Curve LP vault)
+    // [NOTE] these are estimated value from StableSwap's calculate_withdraw_one_coin function
     //  ~60.862835862281248030 (TriCrypto Curve LP vault)
     // ~102.151273348510370556 (stEth Curve LP vault)
 

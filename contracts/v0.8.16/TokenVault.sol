@@ -57,7 +57,7 @@ contract TokenVault is BaseTokenVault {
     address _rewardsToken,
     address _stakingToken,
     address _controller
-  ) public override {
+  ) external override {
     if (isInitialized) revert TokenVault_AlreadyInitialized();
 
     rewardsToken = _rewardsToken;

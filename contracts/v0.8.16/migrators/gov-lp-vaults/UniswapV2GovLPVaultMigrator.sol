@@ -31,6 +31,7 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   mapping(address => bool) public tokenVaultOK;
 
   /* ========== EVENTS ========== */
+  event WhitelistTokenVault(address tokenVault, bool isOk);
   event Execute(uint256 returnedETH, uint256 returnedBaseToken);
 
   /* ========== ERRORS ========== */
@@ -52,11 +53,13 @@ contract UniswapV2GovLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   }
 
   /* ========== ADMIN FUNCTIONS ========== */
-  function whitelistTokenVault(address tokenVault, bool isOk)
+  function whitelistTokenVault(address _tokenVault, bool _isOk)
     external
     onlyOwner
   {
-    tokenVaultOK[tokenVault] = isOk;
+    tokenVaultOK[_tokenVault] = _isOk;
+
+    emit WhitelistTokenVault(_tokenVault, _isOk);
   }
 
   /* ========== EXTERNAL FUNCTIONS ========== */

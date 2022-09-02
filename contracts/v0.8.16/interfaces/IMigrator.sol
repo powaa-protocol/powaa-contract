@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 interface IMigrator {
   function execute(bytes calldata data) external;
 
-  function whitelistTokenVault(address tokenVault, bool isOk) external;
+  function whitelistTokenVault(address _tokenVault, bool _isOk) external;
 
   function getAmountOut(bytes calldata _data) external returns (uint256);
 

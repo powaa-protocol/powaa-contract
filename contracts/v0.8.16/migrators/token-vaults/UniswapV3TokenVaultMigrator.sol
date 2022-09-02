@@ -88,13 +88,13 @@ contract UniswapV3TokenVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   }
 
   /* ========== ADMIN FUNCTIONS ========== */
-  function whitelistTokenVault(address tokenVault, bool isOk)
+  function whitelistTokenVault(address _tokenVault, bool _isOk)
     external
     onlyOwner
   {
-    tokenVaultOK[tokenVault] = isOk;
+    tokenVaultOK[_tokenVault] = _isOk;
 
-    emit WhitelistTokenVault(tokenVault, isOk);
+    emit WhitelistTokenVault(_tokenVault, _isOk);
   }
 
   /* ========== EXTERNAL FUNCTIONS ========== */

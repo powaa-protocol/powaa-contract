@@ -59,6 +59,19 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     uint256 govLPTokenVaultReward
   );
 
+  event WhitelistTokenVault(address tokenVault, bool isOk);
+  event MapTokenVaultRouter(
+    address tokenVault,
+    address curveFinancePoolRouter,
+    uint24 underlyingCount
+  );
+  event WhitelistRouterToRemoveLiquidityAsEth(
+    address router,
+    bool isSwapToEth,
+    int128 ethIndex,
+    bool isUintParam
+  );
+
   /* ========== ERRORS ========== */
   error CurveLPVaultMigrator_OnlyWhitelistedTokenVault();
   error CurveLPVaultMigrator_InvalidFeeRate();
@@ -100,22 +113,30 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   }
 
   /* ========== ADMIN FUNCTIONS ========== */
-  function whitelistTokenVault(address tokenVault, bool isOk)
+  function whitelistTokenVault(address _tokenVault, bool _isOk)
     external
     onlyOwner
   {
-    tokenVaultOK[tokenVault] = isOk;
+    tokenVaultOK[_tokenVault] = _isOk;
+
+    emit WhitelistTokenVault(_tokenVault, _isOk);
   }
 
   function mapTokenVaultRouter(
-    address tokenVault,
-    address curveFinancePoolRouter,
-    uint24 underlyingCount
+    address _tokenVault,
+    address _curveFinancePoolRouter,
+    uint24 _underlyingCount
   ) external onlyOwner {
-    ICurveFiStableSwap router = ICurveFiStableSwap(curveFinancePoolRouter);
+    ICurveFiStableSwap router = ICurveFiStableSwap(_curveFinancePoolRouter);
 
-    tokenVaultPoolRouter[tokenVault] = router;
-    poolUnderlyingCount[address(router)] = underlyingCount;
+    tokenVaultPoolRouter[_tokenVault] = router;
+    poolUnderlyingCount[address(router)] = _underlyingCount;
+
+    emit MapTokenVaultRouter(
+      _tokenVault,
+      _curveFinancePoolRouter,
+      _underlyingCount
+    );
   }
 
   function whitelistRouterToRemoveLiquidityAsEth(
@@ -129,6 +150,13 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
       ethIndex: _ethIndex,
       isUintParam: _isUintParam
     });
+
+    emit WhitelistRouterToRemoveLiquidityAsEth(
+      _router,
+      _isSwapToEth,
+      _ethIndex,
+      _isUintParam
+    );
   }
 
   /* ========== EXTERNAL FUNCTIONS ========== */

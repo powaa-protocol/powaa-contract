@@ -56,4 +56,5 @@ You can participate in our protocol as
   - LP Vaults: The migration strategy, focusing on breaking down the LP token and swapping into ETH on Uniswap v2. The strategy works **BOTH** on the PoW and PoS chain in order to protect our liquidity provider's ETH.
 
 ### Fee Models
-- The withdrawal fee model: The withdrawal fee should increase as we appreoach the Merge. Once the Merge is complete and all the rewards have been distributed, the withdrawal fees will no longer be charged and users can freely withdraw their assets without any penalty.
+
+- The withdrawal fee model: The withdrawal fee should increase as we approach the Merge. Once the Merge is complete and all the rewards have been distributed, the withdrawal fees will no longer be charged and users can freely withdraw their assets without any penalty.

@@ -278,7 +278,7 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
       address(tokenVaultImpl),
       curveLPVaultMigrator,
       curveLPVaultReserveMigrator,
-      STETH_FEE
+      0 // this vault won't be using the UniswapV3 quoter
     );
     /*
     Curve Migrator requires extra step to map TokenVault with Curve's StableSwap (AKA Router)
@@ -312,6 +312,21 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
         address(curveTriCrypto2StableSwap),
         3
       );
+    //  this additional function call is for setting the migrator to remove all LP liquidity as ETH
+    CurveLPVaultMigrator(payable(address(curveLPVaultMigrator)))
+      .whitelistRouterToRemoveLiquidityAsEth(
+        address(curveTriCrypto2StableSwap),
+        true,
+        2,
+        true
+      );
+    CurveLPVaultMigrator(payable(address(curveLPVaultReserveMigrator)))
+      .whitelistRouterToRemoveLiquidityAsEth(
+        address(curveTriCrypto2StableSwap),
+        true,
+        2,
+        true
+      );
 
     // StETH
     CurveLPVaultMigrator(payable(address(curveLPVaultMigrator)))
@@ -325,6 +340,22 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
         address(curveStEthLpVault),
         address(curveStEthStableSwap),
         2
+      );
+    //  this additional function call is for setting the migrator to remove all LP liquidity as ETH
+    CurveLPVaultMigrator(payable(address(curveLPVaultMigrator)))
+      .whitelistRouterToRemoveLiquidityAsEth(
+        address(curveStEthStableSwap),
+        true,
+        0,
+        false
+      );
+    //  this additional function call to set the migrator to remove all LP liquidity as ETH
+    CurveLPVaultMigrator(payable(address(curveLPVaultReserveMigrator)))
+      .whitelistRouterToRemoveLiquidityAsEth(
+        address(curveStEthStableSwap),
+        true,
+        0,
+        false
       );
   }
 

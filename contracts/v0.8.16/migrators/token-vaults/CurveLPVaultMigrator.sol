@@ -92,20 +92,6 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
     uniswapRouter = _uniswapRouter;
     quoter = _quoter;
-
-    // stETH Pool contain ETH at index 0
-    stableSwapContainEth[CURVE_STETH_STABLE_SWAP] = true;
-    stableSwapEthIndex[CURVE_STETH_STABLE_SWAP] = StableSwapEthMetadata({
-      ethIndex: 0,
-      isUintParam: false
-    });
-
-    // TriCrypto2 Pool contain Wrapped ETH at index 2
-    stableSwapContainEth[CURVE_TRICRYPTO2_STABLE_SWAP] = true;
-    stableSwapEthIndex[CURVE_TRICRYPTO2_STABLE_SWAP] = StableSwapEthMetadata({
-      ethIndex: 2,
-      isUintParam: true
-    });
   }
 
   /* ========== MODIFIERS ========== */
@@ -134,6 +120,19 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
     tokenVaultPoolRouter[tokenVault] = router;
     poolUnderlyingCount[address(router)] = underlyingCount;
+  }
+
+  function whitelistRouterToRemoveLiquidityAsEth(
+    address _router,
+    bool _isSwapToEth,
+    int128 _ethIndex,
+    bool _isUintParam
+  ) external onlyOwner {
+    stableSwapContainEth[_router] = _isSwapToEth;
+    stableSwapEthIndex[_router] = StableSwapEthMetadata({
+      ethIndex: _ethIndex,
+      isUintParam: _isUintParam
+    });
   }
 
   /* ========== EXTERNAL FUNCTIONS ========== */

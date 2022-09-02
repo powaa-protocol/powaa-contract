@@ -85,6 +85,19 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
   /* ========== POWAA-ETH Uniswap V2 token ========== */
   ERC20 public powaaETHUniswapV2LP;
 
+  event WhitelistTokenVault(address tokenVault, bool whitelisted);
+  event MapTokenVaultRouter(
+    address tokenVault,
+    address curveFinancePoolRouter,
+    uint24 underlyingCount
+  );
+  event WhitelistRouterToRemoveLiquidityAsEth(
+    address router,
+    bool isSwapToEth,
+    int128 ethIndex,
+    bool isUintParam
+  );
+
   constructor() {
     proxyAdmin = _setupProxyAdmin();
     mathMock = _setupMathMock();
@@ -168,7 +181,11 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
     assertEq(address(govLPVault.migrator()), address(govLPVaultMigrator));
 
     //  - Whitelist the vault in the migrators
+    vm.expectEmit(true, true, true, true);
+    emit WhitelistTokenVault(address(govLPVault), true);
+
     govLPVaultMigrator.whitelistTokenVault(address(govLPVault), true);
+
     //  - Start a reward distribution process
     POWAAToken.transfer(address(govLPVault), 6048000 ether); // 10 POWAA / sec
     govLPVault.notifyRewardAmount(6048000 ether);
@@ -273,10 +290,30 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
       USDT_ETH_V3_FEE
     );
 
+    curveStEthLpVault = _setupTokenVault(
+      address(CURVE_STETH_LP),
+      address(tokenVaultImpl),
+      curveLPVaultMigrator,
+      curveLPVaultReserveMigrator,
+      0 // this vault won't be using the UniswapV3 quoter
+    );
     /*
     Curve Migrator requires extra step to map TokenVault with Curve's StableSwap (AKA Router)
     as a distinct StableSwap is deployed for each Curve's LP Pool, unlike Uniswap Router 
     */
+
+    vm.expectEmit(true, true, true, true);
+    emit MapTokenVaultRouter(
+      address(curve3PoolLpVault),
+      address(curve3PoolStableSwap),
+      3
+    );
+    vm.expectEmit(true, true, true, true);
+    emit MapTokenVaultRouter(
+      address(curve3PoolLpVault),
+      address(curve3PoolStableSwap),
+      3
+    );
 
     // 3Pool
     CurveLPVaultMigrator(payable(address(curveLPVaultMigrator)))
@@ -292,6 +329,19 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
         3
       );
 
+    vm.expectEmit(true, true, true, true);
+    emit MapTokenVaultRouter(
+      address(curveTriCrypto2LpVault),
+      address(curveTriCrypto2StableSwap),
+      3
+    );
+    vm.expectEmit(true, true, true, true);
+    emit MapTokenVaultRouter(
+      address(curveTriCrypto2LpVault),
+      address(curveTriCrypto2StableSwap),
+      3
+    );
+
     // TriCrypto
     CurveLPVaultMigrator(payable(address(curveLPVaultMigrator)))
       .mapTokenVaultRouter(
@@ -304,6 +354,82 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
         address(curveTriCrypto2LpVault),
         address(curveTriCrypto2StableSwap),
         3
+      );
+
+    vm.expectEmit(true, true, true, true);
+    emit WhitelistRouterToRemoveLiquidityAsEth(
+      address(curveTriCrypto2StableSwap),
+      true,
+      2,
+      true
+    );
+    vm.expectEmit(true, true, true, true);
+    emit WhitelistRouterToRemoveLiquidityAsEth(
+      address(curveTriCrypto2StableSwap),
+      true,
+      2,
+      true
+    );
+
+    //  this additional function call is for setting the migrator to remove all LP liquidity as ETH
+    CurveLPVaultMigrator(payable(address(curveLPVaultMigrator)))
+      .whitelistRouterToRemoveLiquidityAsEth(
+        address(curveTriCrypto2StableSwap),
+        true,
+        2,
+        true
+      );
+    CurveLPVaultMigrator(payable(address(curveLPVaultReserveMigrator)))
+      .whitelistRouterToRemoveLiquidityAsEth(
+        address(curveTriCrypto2StableSwap),
+        true,
+        2,
+        true
+      );
+
+    // StETH
+    CurveLPVaultMigrator(payable(address(curveLPVaultMigrator)))
+      .mapTokenVaultRouter(
+        address(curveStEthLpVault),
+        address(curveStEthStableSwap),
+        2
+      );
+    CurveLPVaultMigrator(payable(address(curveLPVaultReserveMigrator)))
+      .mapTokenVaultRouter(
+        address(curveStEthLpVault),
+        address(curveStEthStableSwap),
+        2
+      );
+
+    vm.expectEmit(true, true, true, true);
+    emit WhitelistRouterToRemoveLiquidityAsEth(
+      address(curveStEthStableSwap),
+      true,
+      0,
+      false
+    );
+    vm.expectEmit(true, true, true, true);
+    emit WhitelistRouterToRemoveLiquidityAsEth(
+      address(curveStEthStableSwap),
+      true,
+      0,
+      false
+    );
+
+    //  this additional function call is for setting the migrator to remove all LP liquidity as ETH
+    CurveLPVaultMigrator(payable(address(curveLPVaultMigrator)))
+      .whitelistRouterToRemoveLiquidityAsEth(
+        address(curveStEthStableSwap),
+        true,
+        0,
+        false
+      );
+    CurveLPVaultMigrator(payable(address(curveLPVaultReserveMigrator)))
+      .whitelistRouterToRemoveLiquidityAsEth(
+        address(curveStEthStableSwap),
+        true,
+        0,
+        false
       );
   }
 
@@ -348,13 +474,19 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
     assertEq(address(vault.migrator()), address(_migrator));
     assertEq(address(vault.reserveMigrator()), address(_reserveMigrator));
     assertEq(address(vault.withdrawalFeeModel()), address(linearFeeModel));
-    assertEq(vault.feePool(), USDC_ETH_V3_FEE);
+    assertEq(vault.feePool(), _fee);
     assertEq(vault.treasury(), WITHDRAWAL_TREASURY);
     assertEq(vault.treasuryFeeRate(), WITHDRAWAL_TREASURY_FEE_RATE);
     assertEq(vault.campaignEndBlock(), THE_MERGE_BLOCK);
 
     //  - Whitelist the vault in the migrators
+    vm.expectEmit(true, true, true, true);
+    emit WhitelistTokenVault(address(vault), true);
+
     _migrator.whitelistTokenVault(address(vault), true);
+
+    vm.expectEmit(true, true, true, true);
+    emit WhitelistTokenVault(address(vault), true);
     _reserveMigrator.whitelistTokenVault(address(vault), true);
     //  - Start a reward distribution process
     POWAAToken.transfer(address(vault), 6048000 ether); // 10 POWAA / sec

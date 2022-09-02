@@ -43,6 +43,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   mapping(address => bool) public tokenVaultOK;
 
   /* ========== EVENTS ========== */
+  event WhitelistTokenVault(address tokenVault, bool whitelisted);
   event Execute(
     uint256 vaultReward,
     uint256 treasuryReward,
@@ -95,11 +96,13 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   }
 
   /* ========== ADMIN FUNCTIONS ========== */
-  function whitelistTokenVault(address tokenVault, bool isOk)
+  function whitelistTokenVault(address _tokenVault, bool _isOk)
     external
     onlyOwner
   {
-    tokenVaultOK[tokenVault] = isOk;
+    tokenVaultOK[_tokenVault] = _isOk;
+
+    emit WhitelistTokenVault(_tokenVault, _isOk);
   }
 
   /* ========== EXTERNAL FUNCTIONS ========== */

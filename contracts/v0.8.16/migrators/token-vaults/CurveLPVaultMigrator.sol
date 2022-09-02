@@ -23,6 +23,7 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeERC20 for IERC20;
 
   /* ========== CONSTANT ========== */
+
   address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
@@ -42,12 +43,33 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   mapping(address => ICurveFiStableSwap) public tokenVaultPoolRouter;
   mapping(address => uint24) public poolUnderlyingCount;
 
+  struct StableSwapEthMetadata {
+    int128 ethIndex;
+    bool isUintParam;
+  }
+
+  mapping(address => bool) public stableSwapContainEth;
+  mapping(address => StableSwapEthMetadata) public stableSwapEthMetadata;
+
   /* ========== EVENTS ========== */
   event Execute(
     uint256 vaultReward,
     uint256 treasuryReward,
     uint256 controllerReward,
     uint256 govLPTokenVaultReward
+  );
+
+  event WhitelistTokenVault(address tokenVault, bool whitelisted);
+  event MapTokenVaultRouter(
+    address tokenVault,
+    address curveFinancePoolRouter,
+    uint24 underlyingCount
+  );
+  event WhitelistRouterToRemoveLiquidityAsEth(
+    address router,
+    bool isSwapToEth,
+    int128 ethIndex,
+    bool isUintParam
   );
 
   /* ========== ERRORS ========== */
@@ -91,22 +113,50 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   }
 
   /* ========== ADMIN FUNCTIONS ========== */
-  function whitelistTokenVault(address tokenVault, bool isOk)
+  function whitelistTokenVault(address _tokenVault, bool _isOk)
     external
     onlyOwner
   {
-    tokenVaultOK[tokenVault] = isOk;
+    tokenVaultOK[_tokenVault] = _isOk;
+
+    emit WhitelistTokenVault(_tokenVault, _isOk);
   }
 
   function mapTokenVaultRouter(
-    address tokenVault,
-    address curveFinancePoolRouter,
-    uint24 underlyingCount
+    address _tokenVault,
+    address _curveFinancePoolRouter,
+    uint24 _underlyingCount
   ) external onlyOwner {
-    ICurveFiStableSwap router = ICurveFiStableSwap(curveFinancePoolRouter);
+    ICurveFiStableSwap router = ICurveFiStableSwap(_curveFinancePoolRouter);
 
-    tokenVaultPoolRouter[tokenVault] = router;
-    poolUnderlyingCount[address(router)] = underlyingCount;
+    tokenVaultPoolRouter[_tokenVault] = router;
+    poolUnderlyingCount[address(router)] = _underlyingCount;
+
+    emit MapTokenVaultRouter(
+      _tokenVault,
+      _curveFinancePoolRouter,
+      _underlyingCount
+    );
+  }
+
+  function whitelistRouterToRemoveLiquidityAsEth(
+    address _router,
+    bool _isSwapToEth,
+    int128 _ethIndex,
+    bool _isUintParam
+  ) external onlyOwner {
+    stableSwapContainEth[_router] = _isSwapToEth;
+    stableSwapEthMetadata[_router] = StableSwapEthMetadata({
+      ethIndex: _ethIndex,
+      isUintParam: _isUintParam
+    });
+
+    emit WhitelistRouterToRemoveLiquidityAsEth(
+      _router,
+      _isSwapToEth,
+      _ethIndex,
+      _isUintParam
+    );
   }
 
   /* ========== EXTERNAL FUNCTIONS ========== */
@@ -119,41 +169,61 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     ICurveFiStableSwap curveStableSwap = tokenVaultPoolRouter[msg.sender];
 
     uint256 liquidity = IERC20(lpToken).balanceOf(address(this));
-    IERC20(lpToken).approve(address(curveStableSwap), liquidity);
+    IERC20(lpToken).safeApprove(address(curveStableSwap), liquidity);
 
     uint24 underlyingCount = poolUnderlyingCount[address(curveStableSwap)];
 
-    if (underlyingCount == 3) {
-      curveStableSwap.remove_liquidity(
-        liquidity,
-        [uint256(0), uint256(0), uint256(0)]
-      );
+    if (stableSwapContainEth[address(curveStableSwap)]) {
+      StableSwapEthMetadata memory metadata = stableSwapEthMetadata[
+        address(curveStableSwap)
+      ];
+
+      if (metadata.isUintParam) {
+        curveStableSwap.remove_liquidity_one_coin(
+          liquidity,
+          uint256(int256(metadata.ethIndex)),
+          uint256(0)
+        );
+      } else {
+        curveStableSwap.remove_liquidity_one_coin(
+          liquidity,
+          metadata.ethIndex,
+          uint256(0)
+        );
+      }
     } else {
-      curveStableSwap.remove_liquidity(liquidity, [uint256(0), uint256(0)]);
-    }
+      if (underlyingCount == 3) {
+        curveStableSwap.remove_liquidity(
+          liquidity,
+          [uint256(0), uint256(0), uint256(0)]
+        );
+      } else {
+        curveStableSwap.remove_liquidity(liquidity, [uint256(0), uint256(0)]);
+      }
 
-    uint256 i;
-    for (i = 0; i < underlyingCount; i++) {
-      address coinAddress = curveStableSwap.coins((i));
+      uint256 i;
+      for (i = 0; i < underlyingCount; i++) {
+        address coinAddress = curveStableSwap.coins((i));
 
-      // ETH is already counted in this address balance
-      // swapping WETH is unnecessary
-      if (coinAddress != ETH && coinAddress != WETH9) {
-        uint256 swapAmount = IERC20(coinAddress).balanceOf(address(this));
-        IERC20(coinAddress).safeApprove(address(uniswapRouter), swapAmount);
+        // ETH is already counted in this address balance
+        // swapping WETH is unnecessary
+        if (coinAddress != ETH && coinAddress != WETH9) {
+          uint256 swapAmount = IERC20(coinAddress).balanceOf(address(this));
+          IERC20(coinAddress).safeApprove(address(uniswapRouter), swapAmount);
 
-        IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
-          .ExactInputSingleParams({
-            tokenIn: coinAddress,
-            tokenOut: WETH9,
-            fee: poolFee,
-            recipient: address(this),
-            amountIn: swapAmount,
-            amountOutMinimum: 0,
-            sqrtPriceLimitX96: 0
-          });
+          IV3SwapRouter.ExactInputSingleParams memory params = IV3SwapRouter
+            .ExactInputSingleParams({
+              tokenIn: coinAddress,
+              tokenOut: WETH9,
+              fee: poolFee,
+              recipient: address(this),
+              amountIn: swapAmount,
+              amountOutMinimum: 0,
+              sqrtPriceLimitX96: 0
+            });
 
-        uniswapRouter.exactInputSingle(params);
+          uniswapRouter.exactInputSingle(params);
+        }
       }
     }
 

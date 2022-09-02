@@ -23,6 +23,16 @@ interface ICurveFiStableSwap {
     uint256 _min_amount
   ) external;
 
+  // stEth, 3Pool function's index parameter is uint256
+  function calc_withdraw_one_coin(uint256 _token_amount, uint256 i)
+    external
+    returns (uint256);
+
+  // TriCrypto2 function's index parameter is int128
+  function calc_withdraw_one_coin(uint256 _token_amount, int128 i)
+    external
+    returns (uint256);
+
   function coins(uint256 i) external view returns (address);
 
   function balances(uint256 i) external view returns (uint256);

@@ -266,29 +266,51 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     ICurveFiStableSwap curveStableSwap = tokenVaultPoolRouter[msg.sender];
     uint24 underlyingCount = poolUnderlyingCount[address(curveStableSwap)];
 
-    uint256 ratio = stakeAmount.divWadDown(IERC20(lpToken).totalSupply());
-    uint256 amountOut = 0;
-    uint256 i;
-    for (i = 0; i < underlyingCount; i++) {
-      address coinAddress = curveStableSwap.coins((i));
+    if (stableSwapContainEth[address(curveStableSwap)]) {
+      StableSwapEthMetadata memory metadata = stableSwapEthMetadata[
+        address(curveStableSwap)
+      ];
 
-      uint256 reserve = curveStableSwap.balances(i);
-      uint256 liquidity = uint256(reserve).mulWadDown(ratio);
-
-      if (coinAddress == ETH || coinAddress == WETH9) {
-        amountOut += liquidity;
+      uint256 approximatedEth;
+      // calc_withdraw_one_coin(uint256 _token_amount, int128 i)
+      if (metadata.isUintParam) {
+        approximatedEth = curveStableSwap.calc_withdraw_one_coin(
+          stakeAmount,
+          uint256(int256(metadata.ethIndex))
+        );
       } else {
-        amountOut += quoter.quoteExactInputSingle(
-          coinAddress,
-          WETH9,
-          poolFee,
-          liquidity,
-          0
+        approximatedEth = curveStableSwap.calc_withdraw_one_coin(
+          stakeAmount,
+          metadata.ethIndex
         );
       }
-    }
 
-    return amountOut;
+      return approximatedEth;
+    } else {
+      uint256 ratio = stakeAmount.divWadDown(IERC20(lpToken).totalSupply());
+      uint256 amountOut = 0;
+      uint256 i;
+      for (i = 0; i < underlyingCount; i++) {
+        address coinAddress = curveStableSwap.coins((i));
+
+        uint256 reserve = curveStableSwap.balances(i);
+        uint256 liquidity = uint256(reserve).mulWadDown(ratio);
+
+        if (coinAddress == ETH || coinAddress == WETH9) {
+          amountOut += liquidity;
+        } else {
+          amountOut += quoter.quoteExactInputSingle(
+            coinAddress,
+            WETH9,
+            poolFee,
+            liquidity,
+            0
+          );
+        }
+      }
+
+      return amountOut;
+    }
   }
 
   function getApproximatedExecutionRewards(bytes calldata _data)

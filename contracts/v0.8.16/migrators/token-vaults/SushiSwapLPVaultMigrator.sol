@@ -50,6 +50,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     uint256 controllerReward,
     uint256 govLPTokenVaultReward
   );
+  event WhitelistTokenVault(address tokenVault, bool whitelisted);
 
   /* ========== ERRORS ========== */
   error SushiSwapLPVaultMigrator_OnlyWhitelistedTokenVault();

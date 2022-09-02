@@ -15,6 +15,12 @@ interface ICurveFiStableSwap {
     uint256 _min_amount
   ) external;
 
+  function remove_liquidity_one_coin(
+    uint256 _token_amount,
+    int128 i,
+    uint256 _min_amount
+  ) external;
+
   function coins(uint256 i) external view returns (address);
 
   function balances(uint256 i) external view returns (uint256);

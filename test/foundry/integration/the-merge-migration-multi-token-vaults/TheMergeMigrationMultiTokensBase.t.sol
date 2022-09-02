@@ -273,6 +273,13 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
       USDT_ETH_V3_FEE
     );
 
+    curveStEthLpVault = _setupTokenVault(
+      address(CURVE_STETH_LP),
+      address(tokenVaultImpl),
+      curveLPVaultMigrator,
+      curveLPVaultReserveMigrator,
+      STETH_FEE
+    );
     /*
     Curve Migrator requires extra step to map TokenVault with Curve's StableSwap (AKA Router)
     as a distinct StableSwap is deployed for each Curve's LP Pool, unlike Uniswap Router 
@@ -304,6 +311,20 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
         address(curveTriCrypto2LpVault),
         address(curveTriCrypto2StableSwap),
         3
+      );
+
+    // StETH
+    CurveLPVaultMigrator(payable(address(curveLPVaultMigrator)))
+      .mapTokenVaultRouter(
+        address(curveStEthLpVault),
+        address(curveStEthStableSwap),
+        2
+      );
+    CurveLPVaultMigrator(payable(address(curveLPVaultReserveMigrator)))
+      .mapTokenVaultRouter(
+        address(curveStEthLpVault),
+        address(curveStEthStableSwap),
+        2
       );
   }
 
@@ -348,7 +369,7 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
     assertEq(address(vault.migrator()), address(_migrator));
     assertEq(address(vault.reserveMigrator()), address(_reserveMigrator));
     assertEq(address(vault.withdrawalFeeModel()), address(linearFeeModel));
-    assertEq(vault.feePool(), USDC_ETH_V3_FEE);
+    assertEq(vault.feePool(), _fee);
     assertEq(vault.treasury(), WITHDRAWAL_TREASURY);
     assertEq(vault.treasuryFeeRate(), WITHDRAWAL_TREASURY_FEE_RATE);
     assertEq(vault.campaignEndBlock(), THE_MERGE_BLOCK);

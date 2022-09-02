@@ -47,8 +47,13 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   mapping(address => ICurveFiStableSwap) public tokenVaultPoolRouter;
   mapping(address => uint24) public poolUnderlyingCount;
 
+  struct StableSwapEthMetadata {
+    int128 ethIndex;
+    bool isUintParam;
+  }
+
   mapping(address => bool) public stableSwapContainEth;
-  mapping(address => uint256) public stableSwapEthIndex;
+  mapping(address => StableSwapEthMetadata) public stableSwapEthIndex;
 
   /* ========== EVENTS ========== */
   event Execute(
@@ -90,11 +95,17 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
 
     // stETH Pool contain ETH at index 0
     stableSwapContainEth[CURVE_STETH_STABLE_SWAP] = true;
-    stableSwapEthIndex[CURVE_STETH_STABLE_SWAP] = 0;
+    stableSwapEthIndex[CURVE_STETH_STABLE_SWAP] = StableSwapEthMetadata({
+      ethIndex: 0,
+      isUintParam: false
+    });
 
     // TriCrypto2 Pool contain Wrapped ETH at index 2
     stableSwapContainEth[CURVE_TRICRYPTO2_STABLE_SWAP] = true;
-    stableSwapEthIndex[CURVE_TRICRYPTO2_STABLE_SWAP] = 2;
+    stableSwapEthIndex[CURVE_TRICRYPTO2_STABLE_SWAP] = StableSwapEthMetadata({
+      ethIndex: 2,
+      isUintParam: true
+    });
   }
 
   /* ========== MODIFIERS ========== */
@@ -140,12 +151,21 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     uint24 underlyingCount = poolUnderlyingCount[address(curveStableSwap)];
 
     if (stableSwapContainEth[address(curveStableSwap)]) {
-      uint256 ethIndex = stableSwapEthIndex[address(curveStableSwap)];
-      curveStableSwap.remove_liquidity_one_coin(
-        liquidity,
-        ethIndex,
-        uint256(0)
-      );
+      if (stableSwapEthIndex[address(curveStableSwap)].isUintParam) {
+        curveStableSwap.remove_liquidity_one_coin(
+          liquidity,
+          uint256(
+            int256(stableSwapEthIndex[address(curveStableSwap)].ethIndex)
+          ),
+          uint256(0)
+        );
+      } else {
+        curveStableSwap.remove_liquidity_one_coin(
+          liquidity,
+          stableSwapEthIndex[address(curveStableSwap)].ethIndex,
+          uint256(0)
+        );
+      }
     } else {
       if (underlyingCount == 3) {
         curveStableSwap.remove_liquidity(

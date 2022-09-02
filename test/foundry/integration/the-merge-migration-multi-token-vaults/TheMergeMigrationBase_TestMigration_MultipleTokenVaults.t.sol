@@ -67,6 +67,12 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
 
     _distributeCurveLPToken(
       TOKEN_VAULT_MIGRATION_PARTICIPANTS,
+      CURVE_STETH_LP_OWNER,
+      CURVE_STETH_LP_ADDRESS,
+      uint256(1000 ether)
+    );
+    _distributeCurveLPToken(
+      TOKEN_VAULT_MIGRATION_PARTICIPANTS,
       CURVE_3POOL_LP_OWNER,
       CURVE_3POOL_LP_ADDRESS,
       uint256(1000 ether)
@@ -277,13 +283,15 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // -----
     // For GovLPVault, the total of 150 LP canbe removed into 150 ETH and 150 POWAA
     // for ETH, since there is a 5% reward from USDC TokenVault as well, thus the total ETH that the govLPVault should receive is 150 + 0.043108017901645590 + 0.199698423299382415 = 150.242806441201028005
-    address[] memory vaults = new address[](6);
+    address[] memory vaults = new address[](7);
     vaults[0] = address(usdcTokenVault);
     vaults[1] = address(usdcEthSushiLpVault);
     vaults[2] = address(usdtEthSushiLpVault);
     vaults[3] = address(curve3PoolLpVault);
     vaults[4] = address(curveTriCrypto2LpVault);
-    vaults[5] = address(govLPVault);
+    vaults[5] = address(curveStEthLpVault);
+    vaults[6] = address(govLPVault);
+
     // Fund Money to the executer
     vm.deal(EXECUTOR, 10 ether);
     uint256 executerEthBalanceBefore = EXECUTOR.balance;
@@ -566,6 +574,168 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     vm.stopPrank();
   }
 
+  function test_WithHappyCase_WithETHPowChain_WithCurveStETHPool() external {
+    // ALICE & BOB ALSO STAKE IN CURVE STETH POOL
+    vm.expectEmit(true, true, true, true);
+    emit Staked(ALICE, 25 ether);
+
+    vm.startPrank(ALICE);
+    CURVE_STETH_LP.approve(address(curveStEthLpVault), 25 ether);
+    curveStEthLpVault.stake(25 ether);
+    vm.stopPrank();
+
+    assertEq(curveStEthLpVault.balanceOf(ALICE), 25 ether);
+
+    vm.expectEmit(true, true, true, true);
+    emit Staked(BOB, 75 ether);
+
+    vm.startPrank(BOB);
+    CURVE_STETH_LP.approve(address(curveStEthLpVault), 75 ether);
+    curveStEthLpVault.stake(75 ether);
+    vm.stopPrank();
+
+    assertEq(curveStEthLpVault.balanceOf(BOB), 75 ether);
+
+    // ALICE 25 LP and BOB 75 LP
+    assertEq(100 ether, curveStEthLpVault.totalSupply());
+
+    // Warp to the half of the campaign
+    uint256 periodFinish = curveStEthLpVault.periodFinish();
+    uint256 campaignEndBlock = curveStEthLpVault.campaignEndBlock();
+    vm.roll(block.number + (campaignEndBlock - block.number) / 2);
+    vm.warp(block.timestamp + (periodFinish - block.timestamp) / 2);
+
+    // Bob suddenly wants to withdraw half of his stake
+    // -> startBlock >>>> currentBlock (half) >>>> campaignEndBlock
+    // -> 15300000 >>>> 15300000 + (15500000 - 15300000) / 2  >>>> 15500000
+    // -> 15300000 >>>> 15300000 + 100000 = 15400000 >>>> 15500000
+    // 100000 / 200000 = 1/2 of max multiplier = 1/2 * 2% = 1%
+    // thus, Bob needs to pay the total fee of 25 * 1% = 0.25 LP to the reserve, we would reduce reserve after the executor executes migration
+    vm.startPrank(BOB);
+    uint256 bobStEthBalanceBefore = CURVE_STETH_LP.balanceOf(BOB);
+
+    vm.expectEmit(true, true, true, true);
+    emit Withdrawn(BOB, 24.75 ether, 0.25 ether);
+
+    curveStEthLpVault.withdraw(25 ether);
+    uint256 bobStEthBalanceAfter = CURVE_STETH_LP.balanceOf(BOB);
+    vm.stopPrank();
+
+    // States should be updated correcetly
+    assertEq(bobStEthBalanceAfter - bobStEthBalanceBefore, 24.75 ether);
+    assertEq(curveStEthLpVault.balanceOf(BOB), 50 ether);
+    assertEq(curveStEthLpVault.reserve(), 0.25 ether);
+    assertEq(curveStEthLpVault.totalSupply(), 75 ether);
+
+    // Controller Accidentally Call migrate eventhough the time is not yet over
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_NotOwner()"));
+    controller.migrate();
+
+    // Warp to the end of the campaign
+    // Now, chainId has been chagned to ETH POW MAINNET, let's migrate the token so we get all ETH POW
+    vm.roll(campaignEndBlock);
+    vm.warp(periodFinish);
+    vm.chainId(POW_ETH_MAINNET);
+
+    // -----
+    // For StETH Curve LP TokenVault, the total 100 LP (50 LP for Alice and Bob) can be removed into ~0.02 ETH (37.935500903191657811 DAI, 35.274198 USDC, 28.974253 USDT)
+    // 3469.450221 USDC can be swapped into 1.993968467066810624 ETH,
+    // 37.935500903191657811 DAI can be swapped for 0.021801096305316384 ETH
+    // 35.274198 USDC can be swapped for 0.020274615839781213 ETH
+    // 28.974253 USDT can be swapped for 0.016651771447530898 ETH
+    // thus, the result of removing liquidity + swap is 0.021801096305316384 + 0.020274615839781213 + 0.016651771447530898 = 0.058727483592628495 ETH
+    // 5% of 0.058727483592628495  =~ 0.002936374179631424 will be transferred to the treasury
+    // other 5% of 0.058727483592628495 will =~ 0.002936374179631424 be transferred to the GovLPVault
+    // other 2% of 0.058727483592628495 will =~ 0.001174549671852569 be transferred to the Controller (and fund to Executor)
+    // hence, the total ETH that the usdcTokenVault should receive is 0.058727483592628495 - (0.002936374179631424 * 2) - 0.001174549671852569 = 0.051680185561513078
+    // -----
+    address[] memory vaults = new address[](7);
+    vaults[0] = address(usdcTokenVault);
+    vaults[1] = address(usdcEthSushiLpVault);
+    vaults[2] = address(usdtEthSushiLpVault);
+    vaults[3] = address(curve3PoolLpVault);
+    vaults[4] = address(curveTriCrypto2LpVault);
+    vaults[5] = address(curveStEthLpVault);
+    vaults[6] = address(govLPVault);
+    // Fund Money to the executer
+
+    vm.deal(EXECUTOR, 10 ether);
+    uint256 executerEthBalanceBefore = EXECUTOR.balance;
+    vm.startPrank(EXECUTOR);
+
+    // Migrate StEth Reserve
+    vm.expectEmit(true, true, true, true);
+    emit Execute(0.255381318152989046 ether, 0 ether, 0 ether, 0 ether);
+    // Migrate StEth LP Vault
+    vm.expectEmit(true, true, true, true);
+    emit Execute(
+      67.420043744300248392 ether,
+      3.830684303653423204 ether,
+      1.532273721461369281 ether,
+      3.830684303653423204 ether
+    );
+    // TokenVault event
+    vm.expectEmit(true, true, true, true);
+    emit Migrate(75 ether, 67.420043744300248392 ether);
+
+    // Controller Migrate Vaults Events
+    vm.expectEmit(true, true, true, true);
+    emit Migrate(vaults);
+
+    controller.migrate();
+
+    uint256 executerEthBalanceAfter = EXECUTOR.balance;
+
+    // 50% of withdrawal fee will be distributed to the Executor treasury = 0.255381318152989046 / 2 = 0.127690659076494523 ETH
+    // 2% of 67.420043744300248392 will =~ 1.532273721461369281 be transferred to the Controller (and fund to the Executor)
+    // thus, the Executor shall has 1.532273721461369281 + 0.127690659076494523 = 1.659964380537863804 ETH
+    assertEq(
+      executerEthBalanceAfter - executerEthBalanceBefore,
+      1.659964380537863804 ether
+    );
+    // 50% of withdrawal fee will be distributed to the withdrawal treasury = 0.255381318152989046/2 = 0.127690659076494523  ETH
+    assertEq(WITHDRAWAL_TREASURY.balance, 0.127690659076494523 ether);
+
+    // Treasury balance = 3.830684303653423204 from StEth Pool
+    assertEq(TREASURY.balance, 3.830684303653423204 ether);
+
+    assertEq(curveStEthLpVault.ethSupply(), address(curveStEthLpVault).balance);
+    assertEq(address(curveStEthLpVault).balance, 67.420043744300248392 ether);
+    vm.stopPrank();
+
+    // Alice claims her ETH, since Alice owns 33.333% of the supply,
+    // Alice would receive 25 * 67.420043744300248392 / 75 =~ 40.10366625966625004 ETH
+    vm.startPrank(ALICE);
+    vm.expectEmit(true, true, true, true);
+    emit ClaimETH(ALICE, 22.473347914766749464 ether);
+
+    curveStEthLpVault.claimETH();
+
+    assertEq(curveStEthLpVault.balanceOf(ALICE), 0);
+    assertEq(ALICE.balance, 22.473347914766749464 ether);
+
+    // Alice try to claims her ETH again, shouldn't be able to do so
+    curveStEthLpVault.claimETH();
+    assertEq(ALICE.balance, 22.473347914766749464 ether);
+    vm.stopPrank();
+
+    // BOB claims his ETH, since BOB owns 66.666% of the supply,
+    // BOB would receive 50 * 67.420043744300248392 / 75 =~ 40.10366625966625004 ETH
+    vm.startPrank(BOB);
+    vm.expectEmit(true, true, true, true);
+    emit ClaimETH(BOB, 44.946695829533498928 ether);
+
+    curveStEthLpVault.claimETH();
+
+    assertEq(curveStEthLpVault.balanceOf(BOB), 0);
+    assertEq(BOB.balance, 44.946695829533498928 ether);
+
+    // BOB try to claims his ETH again, shouldn't be able to do so
+    curveStEthLpVault.claimETH();
+    assertEq(BOB.balance, 44.946695829533498928 ether);
+    vm.stopPrank();
+  }
+
   function test_WithHappyCase_WithETHPowChain_WithNonRegisterVault() external {
     // *** Alice and Bob are going to participate in USDC tokenvault
     // *** while Cat and Eve, instead, will participate in GOVLp tokenvault
@@ -749,13 +919,14 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     // -----
     // For GovLPVault, the total of 150 LP canbe removed into 150 ETH and 150 POWAA
     // for ETH, since there is a 5% reward from USDC TokenVault as well, thus the total ETH that the govLPVault should receive is 150 + 0.043108017901645590 = 150.043108017901645590 = 150043108017901645590
-    address[] memory vaults = new address[](6);
+    address[] memory vaults = new address[](7);
     vaults[0] = address(usdcTokenVault);
     vaults[1] = address(usdcEthSushiLpVault);
     vaults[2] = address(usdtEthSushiLpVault);
     vaults[3] = address(curve3PoolLpVault);
     vaults[4] = address(curveTriCrypto2LpVault);
-    vaults[5] = address(govLPVault);
+    vaults[5] = address(curveStEthLpVault);
+    vaults[6] = address(govLPVault);
     // Fund Money to the executer
     vm.deal(EXECUTOR, 10 ether);
     uint256 executerEthBalanceBefore = EXECUTOR.balance;

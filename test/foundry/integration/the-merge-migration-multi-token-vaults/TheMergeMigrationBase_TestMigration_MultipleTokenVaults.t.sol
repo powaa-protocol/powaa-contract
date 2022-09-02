@@ -638,16 +638,11 @@ contract TheMergeMigrationBase_TestMigration_MultiTokenVaults is
     vm.chainId(POW_ETH_MAINNET);
 
     // -----
-    // For StETH Curve LP TokenVault, the total 100 LP (50 LP for Alice and Bob) can be removed into ~0.02 ETH (37.935500903191657811 DAI, 35.274198 USDC, 28.974253 USDT)
-    // 3469.450221 USDC can be swapped into 1.993968467066810624 ETH,
-    // 37.935500903191657811 DAI can be swapped for 0.021801096305316384 ETH
-    // 35.274198 USDC can be swapped for 0.020274615839781213 ETH
-    // 28.974253 USDT can be swapped for 0.016651771447530898 ETH
-    // thus, the result of removing liquidity + swap is 0.021801096305316384 + 0.020274615839781213 + 0.016651771447530898 = 0.058727483592628495 ETH
-    // 5% of 0.058727483592628495  =~ 0.002936374179631424 will be transferred to the treasury
-    // other 5% of 0.058727483592628495 will =~ 0.002936374179631424 be transferred to the GovLPVault
-    // other 2% of 0.058727483592628495 will =~ 0.001174549671852569 be transferred to the Controller (and fund to Executor)
-    // hence, the total ETH that the usdcTokenVault should receive is 0.058727483592628495 - (0.002936374179631424 * 2) - 0.001174549671852569 = 0.051680185561513078
+    // For StETH Curve LP TokenVault, the total 75 LP (25 LP for Alice and 50 LP for Bob) can be removed into 76.613686073068464081 ETH
+    // 5% of 76.613686073068464081  =~ 3.830684303653423204 will be transferred to the treasury
+    // other 5% of 76.613686073068464081 will =~ 3.830684303653423204 be transferred to the GovLPVault
+    // other 2% of 76.613686073068464081 will =~ 1.532273721461369281 be transferred to the Controller (and fund to Executor)
+    // hence, the total ETH that the usdcTokenVault should receive is 76.613686073068464081 - (3.830684303653423204 * 2) - 1.532273721461369281 = 67.420043744300248392
     // -----
     address[] memory vaults = new address[](7);
     vaults[0] = address(usdcTokenVault);

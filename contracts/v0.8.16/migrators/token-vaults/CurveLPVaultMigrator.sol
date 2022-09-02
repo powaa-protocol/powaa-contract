@@ -23,10 +23,6 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   using SafeERC20 for IERC20;
 
   /* ========== CONSTANT ========== */
-  address public constant CURVE_STETH_STABLE_SWAP =
-    0xDC24316b9AE028F1497c275EB9192a3Ea0f67022;
-  address public constant CURVE_TRICRYPTO2_STABLE_SWAP =
-    0xD51a44d3FaE010294C616388b506AcdA1bfAAE46;
 
   address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
   address public constant WETH9 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -53,7 +49,7 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   }
 
   mapping(address => bool) public stableSwapContainEth;
-  mapping(address => StableSwapEthMetadata) public stableSwapEthIndex;
+  mapping(address => StableSwapEthMetadata) public stableSwapEthMetadata;
 
   /* ========== EVENTS ========== */
   event Execute(
@@ -129,7 +125,7 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     bool _isUintParam
   ) external onlyOwner {
     stableSwapContainEth[_router] = _isSwapToEth;
-    stableSwapEthIndex[_router] = StableSwapEthMetadata({
+    stableSwapEthMetadata[_router] = StableSwapEthMetadata({
       ethIndex: _ethIndex,
       isUintParam: _isUintParam
     });
@@ -150,18 +146,20 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     uint24 underlyingCount = poolUnderlyingCount[address(curveStableSwap)];
 
     if (stableSwapContainEth[address(curveStableSwap)]) {
-      if (stableSwapEthIndex[address(curveStableSwap)].isUintParam) {
+      StableSwapEthMetadata memory metadata = stableSwapEthMetadata[
+        address(curveStableSwap)
+      ];
+
+      if (metadata.isUintParam) {
         curveStableSwap.remove_liquidity_one_coin(
           liquidity,
-          uint256(
-            int256(stableSwapEthIndex[address(curveStableSwap)].ethIndex)
-          ),
+          uint256(int256(metadata.ethIndex)),
           uint256(0)
         );
       } else {
         curveStableSwap.remove_liquidity_one_coin(
           liquidity,
-          stableSwapEthIndex[address(curveStableSwap)].ethIndex,
+          metadata.ethIndex,
           uint256(0)
         );
       }

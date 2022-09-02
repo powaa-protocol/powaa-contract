@@ -85,7 +85,7 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
   /* ========== POWAA-ETH Uniswap V2 token ========== */
   ERC20 public powaaETHUniswapV2LP;
 
-  event WhitelistTokenVault(address tokenVault, bool isOk);
+  event WhitelistTokenVault(address tokenVault, bool whitelisted);
   event MapTokenVaultRouter(
     address tokenVault,
     address curveFinancePoolRouter,

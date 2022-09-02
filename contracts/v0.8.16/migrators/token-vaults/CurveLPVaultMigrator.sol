@@ -59,7 +59,7 @@ contract CurveLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
     uint256 govLPTokenVaultReward
   );
 
-  event WhitelistTokenVault(address tokenVault, bool isOk);
+  event WhitelistTokenVault(address tokenVault, bool whitelisted);
   event MapTokenVaultRouter(
     address tokenVault,
     address curveFinancePoolRouter,

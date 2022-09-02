@@ -43,7 +43,7 @@ contract SushiSwapLPVaultMigrator is IMigrator, ReentrancyGuard, Ownable {
   mapping(address => bool) public tokenVaultOK;
 
   /* ========== EVENTS ========== */
-  event WhitelistTokenVault(address tokenVault, bool isOk);
+  event WhitelistTokenVault(address tokenVault, bool whitelisted);
   event Execute(
     uint256 vaultReward,
     uint256 treasuryReward,

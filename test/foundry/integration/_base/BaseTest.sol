@@ -36,6 +36,7 @@ abstract contract BaseTest is Test, Config {
   address public constant BOB = address(112);
   address public constant CAT = address(113);
   address public constant EVE = address(114);
+  address public constant FRANK = address(115);
 
   /// @dev Configurable consts
   uint256 public constant POWAA_TOTAL_SUPPLY = 1000000000 ether;

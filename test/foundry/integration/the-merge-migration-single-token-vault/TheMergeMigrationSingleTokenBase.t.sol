@@ -222,6 +222,31 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
       address(usdcTokenVault),
       true
     );
+
+    address[] memory list = new address[](1);
+    list[0] = FRANK;
+
+    _distributeUSDC(list, 1000e6);
+    // try stake/withdraw when fee rate is 0
+    vm.startPrank(FRANK);
+    uint256 balanceBeforeStake = USDC.balanceOf(FRANK);
+    USDC.approve(address(usdcTokenVault), 1000e6);
+
+    usdcTokenVault.stake(1000e6);
+    uint256 balanceAfterStake = USDC.balanceOf(FRANK);
+
+    assertEq(balanceBeforeStake - balanceAfterStake, 1000e6);
+    assertEq(usdcTokenVault.balanceOf(FRANK), 1000e6);
+
+    usdcTokenVault.withdraw(1000e6);
+
+    assertEq(usdcTokenVault.balanceOf(FRANK), 0);
+    assertEq(USDC.balanceOf(FRANK) - balanceAfterStake, 1000e6);
+
+    vm.stopPrank();
+
+    assertEq(USDC.balanceOf(FRANK), 1000e6);
+
     //  - Start a reward distribution process
     POWAAToken.transfer(address(usdcTokenVault), 6048000 ether); // 10 POWAA / sec
     usdcTokenVault.notifyRewardAmount(6048000 ether);

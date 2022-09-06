@@ -227,7 +227,7 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
     list[0] = FRANK;
 
     _distributeUSDC(list, 1000e6);
-    // try stake/withdraw when fee rate is 0
+    // Try stake/withdraw when fee rate is 0
     vm.startPrank(FRANK);
     uint256 balanceBeforeStake = USDC.balanceOf(FRANK);
     USDC.approve(address(usdcTokenVault), 1000e6);
@@ -268,6 +268,7 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
 
     assertEq(THE_MERGE_BLOCK + 1000, usdcTokenVault.campaignEndBlock());
 
+    // Since Frank is now the owner, the former owner is now restricted from calling admin functions
     vm.expectRevert(abi.encodeWithSignature("TokenVault_NotOwner()"));
     usdcTokenVault.setMigrationOption(
       tokenVaultMigrator,

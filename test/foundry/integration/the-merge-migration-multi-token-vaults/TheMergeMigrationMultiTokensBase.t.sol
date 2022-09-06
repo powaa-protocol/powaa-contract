@@ -217,6 +217,7 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
       USDC_ETH_V3_FEE
     );
 
+    // This deployment should be failed as the salt (in this case, the USDC address) is already used
     vm.expectRevert("ERC1167: create2 failed");
     controller.deployDeterministicVault(
       address(tokenVaultImpl),

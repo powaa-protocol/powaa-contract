@@ -217,6 +217,14 @@ abstract contract TheMergeMigrationMultiTokensBase is BaseTest {
       USDC_ETH_V3_FEE
     );
 
+    vm.expectRevert("ERC1167: create2 failed");
+    controller.deployDeterministicVault(
+      address(tokenVaultImpl),
+      address(this),
+      address(POWAAToken),
+      address(USDC)
+    );
+
     // Setup USDC-ETH Sushiswap LP related Vault and Migrator
     sushiLPTokenVaultMigrator = _setupSushiSwapLPTokenVaultMigrator(
       sushiswapRouter,

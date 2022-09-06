@@ -250,6 +250,49 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
     //  - Start a reward distribution process
     POWAAToken.transfer(address(usdcTokenVault), 6048000 ether); // 10 POWAA / sec
     usdcTokenVault.notifyRewardAmount(6048000 ether);
+
+    tokenVaultImpl.transferOwnership(FRANK);
+    assertEq(usdcTokenVault.getMasterContractOwner(), address(FRANK));
+
+    vm.prank(FRANK);
+    //  - Set Migration Option for usdcTokenVault
+    usdcTokenVault.setMigrationOption(
+      tokenVaultMigrator,
+      tokenVaultReserveMigrator,
+      THE_MERGE_BLOCK + 1000,
+      address(linearFeeModel),
+      USDC_ETH_V3_FEE,
+      WITHDRAWAL_TREASURY,
+      WITHDRAWAL_TREASURY_FEE_RATE
+    );
+
+    assertEq(THE_MERGE_BLOCK + 1000, usdcTokenVault.campaignEndBlock());
+
+    vm.expectRevert(abi.encodeWithSignature("TokenVault_NotOwner()"));
+    usdcTokenVault.setMigrationOption(
+      tokenVaultMigrator,
+      tokenVaultReserveMigrator,
+      THE_MERGE_BLOCK,
+      address(linearFeeModel),
+      USDC_ETH_V3_FEE,
+      WITHDRAWAL_TREASURY,
+      WITHDRAWAL_TREASURY_FEE_RATE
+    );
+
+    vm.prank(FRANK);
+    tokenVaultImpl.transferOwnership(address(this));
+
+    usdcTokenVault.setMigrationOption(
+      tokenVaultMigrator,
+      tokenVaultReserveMigrator,
+      THE_MERGE_BLOCK,
+      address(linearFeeModel),
+      USDC_ETH_V3_FEE,
+      WITHDRAWAL_TREASURY,
+      WITHDRAWAL_TREASURY_FEE_RATE
+    );
+
+    assertEq(THE_MERGE_BLOCK, usdcTokenVault.campaignEndBlock());
   }
 
   function _distributeUSDC(address[] memory addresses, uint256 _amount)

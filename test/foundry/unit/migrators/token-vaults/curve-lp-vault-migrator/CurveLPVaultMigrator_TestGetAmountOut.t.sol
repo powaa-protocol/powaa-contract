@@ -29,37 +29,15 @@ contract CurveLPVaultMigrator_TestGetAmountOut is CurveLPVaultMigratorBaseTest {
   }
 
   function test_WhenCallProperly_WithStETHPool() external {
-    // randomly mint to someone to generate lp token supply
-    vm.prank(fakeStethLpToken.owner());
-    fakeStethLpToken.mint(address(fakeQuoter), 200 ether);
-
-    _preMintFakeCurveStETHPoolLPUnderlyings(
-      address(fakeCurveStethStableSwap),
-      50 ether
-    );
-
-    fakeQuoter.mockSetQuoteToNativeRate(
-      address(fakeStethLpToken.tokens(1)),
-      1 ether
-    );
-
     bytes memory data = abi.encode(
       address(fakeStethLpToken),
       uint24(0),
       uint256(100 ether)
     );
 
-    // we mocked the quotation rate, so the amount in will be exactly equals to the amount out
-
-    // our token liquidity = (total_token_reserve * (our_ratio_in_total_supply))
-    // token0
-    // (50e18 * (100e18 / 200e18)) = 25e18
-
-    // token1
-    // (50e18 * (100e18 / 200e18)) = 25e18
-
+    // we mock the exchange rate, so for 1 LP token swapper would receieve 0.5 token0 and 0.5 token1
     vm.prank(TOKEN_VAULT_STETH);
-    assertEq(50 ether, migrator.getAmountOut(data));
+    assertEq(100 ether, migrator.getAmountOut(data));
   }
 
   function test_WhenCallProperly_With3Pool() external {
@@ -108,47 +86,14 @@ contract CurveLPVaultMigrator_TestGetAmountOut is CurveLPVaultMigratorBaseTest {
   }
 
   function test_WhenCallProperly_WithTriCrypto2Pool() external {
-    // randomly mint to someone to generate lp token supply
-    vm.prank(fakeTriCrypto2LpToken.owner());
-    fakeTriCrypto2LpToken.mint(address(fakeQuoter), 200 ether);
-
-    _preMintFakeCurveTriCrypto2LPUnderlyings(
-      address(fakeCurveTriCrypto2StableSwap),
-      50 ether
-    );
-
-    fakeQuoter.mockSetQuoteToNativeRate(
-      address(fakeTriCrypto2LpToken.tokens(0)),
-      1 ether
-    );
-    fakeQuoter.mockSetQuoteToNativeRate(
-      address(fakeTriCrypto2LpToken.tokens(1)),
-      1 ether
-    );
-    fakeQuoter.mockSetQuoteToNativeRate(
-      address(fakeTriCrypto2LpToken.tokens(2)),
-      1 ether
-    );
-
     bytes memory data = abi.encode(
       address(fakeTriCrypto2LpToken),
       uint24(0),
       uint256(100 ether)
     );
 
-    // we mocked the quotation rate, so the amount in will be exactly equals to the amount out
-
-    // our token liquidity = (total_token_reserve * (our_ratio_in_total_supply))
-    // token0
-    // (50e18 * (100e18 / 200e18)) = 25e18
-
-    // token1
-    // (50e18 * (100e18 / 200e18)) = 25e18
-
-    // token2
-    // (50e18 * (100e18 / 200e18)) = 25e18
-
+    // we mock the exchange rate, so for 1 LP token swapper would receieve 0.4 token0, 0.3 token1, and 0.3 token1
     vm.prank(TOKEN_VAULT_TRICRYPTO2);
-    assertEq(75 ether, migrator.getAmountOut(data));
+    assertEq(100 ether, migrator.getAmountOut(data));
   }
 }

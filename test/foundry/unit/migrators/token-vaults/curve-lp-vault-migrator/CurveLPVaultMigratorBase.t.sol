@@ -91,6 +91,12 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
       address(fakeCurveStethStableSwap),
       2
     );
+    migrator.whitelistRouterToRemoveLiquidityAsEth(
+      address(fakeCurveStethStableSwap),
+      true,
+      0,
+      false
+    );
   }
 
   function _preMintFakeCurveStETHPoolLPUnderlyings(address to, uint256 amount)
@@ -105,7 +111,7 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
     MockERC20[4] memory threePoolLPUnderlyings;
     threePoolLPUnderlyings[0] = _setupFakeERC20("Fake DAI", "DAI");
     threePoolLPUnderlyings[1] = _setupFakeERC20("Fake USDC", "USDC");
-    threePoolLPUnderlyings[2] = MockERC20(payable(WETH9));
+    threePoolLPUnderlyings[2] = _setupFakeERC20("Fake USDT", "USDT");
 
     uint256[3] memory exchangeRates;
     exchangeRates[0] = 0.3 ether;
@@ -139,7 +145,7 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
     MockERC20[4] memory triCrypto2LPUnderlyings;
     triCrypto2LPUnderlyings[0] = _setupFakeERC20("Fake USDT", "USDT");
     triCrypto2LPUnderlyings[1] = _setupFakeERC20("Fake BTC", "BTC");
-    triCrypto2LPUnderlyings[2] = _setupFakeERC20("Fake ETH", "ETH");
+    triCrypto2LPUnderlyings[2] = MockERC20(payable(WETH9));
 
     uint256[3] memory exchangeRates;
     exchangeRates[0] = 0.4 ether;
@@ -157,6 +163,13 @@ abstract contract CurveLPVaultMigratorBaseTest is BaseTest {
       TOKEN_VAULT_TRICRYPTO2,
       address(fakeCurveTriCrypto2StableSwap),
       3
+    );
+
+    migrator.whitelistRouterToRemoveLiquidityAsEth(
+      address(fakeCurveTriCrypto2StableSwap),
+      true,
+      2,
+      true
     );
   }
 

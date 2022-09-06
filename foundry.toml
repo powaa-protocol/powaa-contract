@@ -1,5 +1,5 @@
 [profile.default]
-gas_reports = ["Controller", "POWAA", "LinearFeeModel", "TokenVault", "UniswapV3TokenVaultMigrator", "UniswapV2GovLPVaultMigrator"]
+gas_reports = ["Controller", "POWAA", "LinearFeeModel", "TokenVault", "UniswapV3TokenVaultMigrator", "UniswapV2GovLPVaultMigrator", "CurveLPVaultMigrator", "SushiSwapLPVaultMigrator"]
 libs = ['lib']
 out = 'out'
 src = 'contracts'

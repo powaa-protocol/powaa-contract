@@ -20,6 +20,12 @@ const chainIds = {
   pownet: 10001,
 };
 
+const prodPrivateKey: string | undefined =
+  process.env.DEPLOYER_PROD_PRIVATE_KEY;
+if (!prodPrivateKey) {
+  throw new Error("Please set your DEPLOYER_PROD_PRIVATE_KEY in a .env file");
+}
+
 const devPrivateKey: string | undefined = process.env.DEPLOYER_DEV_PRIVATE_KEY;
 if (!devPrivateKey) {
   throw new Error("Please set your DEPLOYER_DEV_PRIVATE_KEY in a .env file");
@@ -28,6 +34,11 @@ if (!devPrivateKey) {
 const mainnetForkRPC: string | undefined = process.env.MAINNET_FORK_RPC_URL;
 if (!mainnetForkRPC) {
   throw new Error("Please set your MAINNET_FORK_RPC_URL in a .env file");
+}
+
+const mainnetRPC: string | undefined = process.env.MAINNET_RPC_URL;
+if (!mainnetRPC) {
+  throw new Error("Please set your MAINNET_RPC_URL in a .env file");
 }
 
 /**
@@ -48,6 +59,11 @@ module.exports = {
       accounts: [devPrivateKey as string],
       chainId: chainIds["mainnet"],
       url: mainnetForkRPC,
+    },
+    mainnet: {
+      accounts: [prodPrivateKey as string],
+      chainId: chainIds["mainnet"],
+      url: mainnetRPC,
     },
   },
   namedAccounts: {

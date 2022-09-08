@@ -12,6 +12,7 @@ import "../../../../contracts/v0.8.16/interfaces/apis/IQuoter.sol";
 import "../../../../contracts/v0.8.16/Controller.sol";
 import "../../../../contracts/v0.8.16/TokenVault.sol";
 import "../../../../contracts/v0.8.16/GovLPVault.sol";
+import "../../../../contracts/v0.8.16/Timelock.sol";
 import "../../../../contracts/v0.8.16/fee-model/LinearFeeModel.sol";
 import "../../../../contracts/v0.8.16/migrators/gov-lp-vaults/UniswapV2GovLPVaultMigrator.sol";
 import "../../../../contracts/v0.8.16/migrators/token-vaults/UniswapV3TokenVaultMigrator.sol";
@@ -66,6 +67,9 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
   TokenVault public usdcTokenVault;
   GovLPVault public govLPVault;
 
+  /* ========== Timelock ========== */
+  Timelock public timelock;
+
   /* ========== POWAA-ETH Uniswap V2 token ========== */
   ERC20 public powaaETHUniswapV2LP;
 
@@ -93,6 +97,9 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
     linearFeeModel = _setupLinearFeeModel(BASE_RATE, MULTIPLIER_RATE);
     // Setup Controller
     controller = _setupController();
+
+    // Setup Timelock
+    timelock = new Timelock(address(this), 6 hours);
 
     // Setup TokenVault Implementation Contract
     TokenVault tokenVaultImpl = _setupTokenVaultImpl();
@@ -251,12 +258,7 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
     POWAAToken.transfer(address(usdcTokenVault), 6048000 ether); // 10 POWAA / sec
     usdcTokenVault.notifyRewardAmount(6048000 ether);
 
-    tokenVaultImpl.transferOwnership(FRANK);
-    assertEq(usdcTokenVault.getMasterContractOwner(), address(FRANK));
-
-    vm.prank(FRANK);
-    //  - Set Migration Option for usdcTokenVault
-    usdcTokenVault.setMigrationOption(
+    bytes memory data = abi.encode(
       tokenVaultMigrator,
       tokenVaultReserveMigrator,
       THE_MERGE_BLOCK + 1000,
@@ -266,9 +268,73 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
       WITHDRAWAL_TREASURY_FEE_RATE
     );
 
+    uint256 eta = block.timestamp + 6 hours;
+
+    tokenVaultImpl.transferOwnership(address(timelock));
+    assertEq(usdcTokenVault.getMasterContractOwner(), address(timelock));
+
+    vm.expectRevert("Timelock::queueTransaction: Call must come from admin.");
+    // this transaction is bound by time, at least 6 hours waiting time is needed
+    vm.prank(FRANK);
+    timelock.queueTransaction(
+      address(usdcTokenVault),
+      0,
+      "setMigrationOption(address,address,uint256,address,uint24,address,uint256)",
+      data,
+      eta
+    );
+
+    //  - Set Migration Option for usdcTokenVault
+    timelock.queueTransaction(
+      address(usdcTokenVault),
+      0,
+      "setMigrationOption(address,address,uint256,address,uint24,address,uint256)",
+      data,
+      eta
+    );
+
+    // Change should not effect the state yet
+    assertEq(THE_MERGE_BLOCK, usdcTokenVault.campaignEndBlock());
+
+    vm.expectRevert(
+      "Timelock::executeTransaction: Transaction hasn't surpassed time lock."
+    );
+    // this transaction is bound by time, at least 6 hours waiting time is needed
+    timelock.executeTransaction(
+      address(usdcTokenVault),
+      0,
+      "setMigrationOption(address,address,uint256,address,uint24,address,uint256)",
+      data,
+      eta
+    );
+    // Change should not effect the state yet
+    assertEq(THE_MERGE_BLOCK, usdcTokenVault.campaignEndBlock());
+
+    vm.expectRevert("Timelock::executeTransaction: Call must come from admin.");
+    // this transaction is bound by time, at least 6 hours waiting time is needed
+    vm.prank(FRANK);
+    timelock.executeTransaction(
+      address(usdcTokenVault),
+      0,
+      "setMigrationOption(address,address,uint256,address,uint24,address,uint256)",
+      data,
+      eta
+    );
+    // Change should not effect the state yet
+    assertEq(THE_MERGE_BLOCK, usdcTokenVault.campaignEndBlock());
+
+    vm.warp(block.timestamp + 7 hours);
+    timelock.executeTransaction(
+      address(usdcTokenVault),
+      0,
+      "setMigrationOption(address,address,uint256,address,uint24,address,uint256)",
+      data,
+      eta
+    );
     assertEq(THE_MERGE_BLOCK + 1000, usdcTokenVault.campaignEndBlock());
 
-    // Since Frank is now the owner, the former owner is now restricted from calling admin functions
+    vm.warp(block.timestamp - 7 hours);
+    // Since Timelock contract is now the owner, the former owner is now restricted from calling admin functions
     vm.expectRevert(abi.encodeWithSignature("TokenVault_NotOwner()"));
     usdcTokenVault.setMigrationOption(
       tokenVaultMigrator,
@@ -280,7 +346,7 @@ abstract contract TheMergeMigrationSingleTokenBase is BaseTest {
       WITHDRAWAL_TREASURY_FEE_RATE
     );
 
-    vm.prank(FRANK);
+    vm.prank(address(timelock));
     tokenVaultImpl.transferOwnership(address(this));
 
     usdcTokenVault.setMigrationOption(

@@ -41,6 +41,10 @@ if (!mainnetRPC) {
   throw new Error("Please set your MAINNET_RPC_URL in a .env file");
 }
 
+const mainnetPowRPC: string | undefined = process.env.MAINNET_POW_RPC_URL;
+if (!mainnetPowRPC) {
+  throw new Error("Please set your MAINNET_POW_RPC_URL in a .env file");
+}
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
@@ -64,6 +68,11 @@ module.exports = {
       accounts: [prodPrivateKey as string],
       chainId: chainIds["mainnet"],
       url: mainnetRPC,
+    },
+    mainnetpow: {
+      accounts: [prodPrivateKey as string],
+      chainId: chainIds["pownet"],
+      url: mainnetPowRPC,
     },
   },
   namedAccounts: {
